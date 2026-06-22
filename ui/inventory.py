@@ -1,0 +1,220 @@
+from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+                             QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
+                             QLineEdit, QDialog, QFormLayout, QSpinBox, QDoubleSpinBox, QMessageBox)
+from PyQt6.QtCore import Qt
+from database.models import get_all_parts, search_parts, add_part, update_part, delete_part
+from utils.helpers import format_currency
+
+class PartDialog(QDialog):
+    def __init__(self, parent=None, part_data=None):
+        super().__init__(parent)
+        self.part_data = part_data
+        self.setWindowTitle("Add Part" if not part_data else "Edit Part")
+        self.setMinimumWidth(400)
+        self.setup_ui()
+        
+    def setup_ui(self):
+        layout = QFormLayout(self)
+        
+        self.name_input = QLineEdit()
+        self.number_input = QLineEdit()
+        self.category_input = QLineEdit()
+        self.location_input = QLineEdit()
+        
+        self.min_qty_input = QSpinBox()
+        self.min_qty_input.setRange(0, 10000)
+        self.min_qty_input.setValue(5)
+        
+        self.purchase_price_input = QDoubleSpinBox()
+        self.purchase_price_input.setRange(0, 1000000)
+        self.purchase_price_input.setDecimals(2)
+        
+        self.selling_price_input = QDoubleSpinBox()
+        self.selling_price_input.setRange(0, 1000000)
+        self.selling_price_input.setDecimals(2)
+        
+        if self.part_data:
+            self.name_input.setText(self.part_data.get('part_name', ''))
+            self.number_input.setText(self.part_data.get('part_number', ''))
+            self.category_input.setText(self.part_data.get('category', ''))
+            self.location_input.setText(self.part_data.get('location', ''))
+            self.min_qty_input.setValue(self.part_data.get('min_quantity', 5))
+            self.purchase_price_input.setValue(self.part_data.get('purchase_price', 0))
+            self.selling_price_input.setValue(self.part_data.get('selling_price', 0))
+            
+        layout.addRow("Part Name:", self.name_input)
+        layout.addRow("Part Number:", self.number_input)
+        layout.addRow("Category:", self.category_input)
+        layout.addRow("Location:", self.location_input)
+        layout.addRow("Min Quantity:", self.min_qty_input)
+        layout.addRow("Purchase Price:", self.purchase_price_input)
+        layout.addRow("Selling Price:", self.selling_price_input)
+        
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("Save")
+        save_btn.setProperty("class", "Primary")
+        save_btn.clicked.connect(self.accept)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        
+        btn_layout.addStretch()
+        btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(save_btn)
+        
+        layout.addRow(btn_layout)
+
+    def get_data(self):
+        return {
+            'part_name': self.name_input.text().strip(),
+            'part_number': self.number_input.text().strip(),
+            'category': self.category_input.text().strip(),
+            'location': self.location_input.text().strip(),
+            'min_quantity': self.min_qty_input.value(),
+            'purchase_price': self.purchase_price_input.value(),
+            'selling_price': self.selling_price_input.value()
+        }
+
+class InventoryScreen(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setup_ui()
+        
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Header
+        header_layout = QHBoxLayout()
+        title = QLabel("Parts Inventory")
+        title.setStyleSheet("font-size: 24px; font-weight: bold;")
+        
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search parts by name or number...")
+        self.search_input.textChanged.connect(self.load_data)
+        self.search_input.setFixedWidth(300)
+        
+        add_btn = QPushButton("+ Add Part")
+        add_btn.setProperty("class", "Primary")
+        add_btn.clicked.connect(self.add_part)
+        
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+        header_layout.addWidget(self.search_input)
+        header_layout.addWidget(add_btn)
+        layout.addLayout(header_layout)
+        
+        # Table
+        self.table = QTableWidget(0, 8)
+        self.table.setHorizontalHeaderLabels(["ID", "Part Number", "Part Name", "Category", "Location", "Qty", "Pur. Price", "Sell. Price"])
+        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.itemDoubleClicked.connect(self.edit_part)
+        
+        layout.addWidget(self.table)
+        
+        # Actions
+        actions_layout = QHBoxLayout()
+        actions_layout.addStretch()
+        
+        edit_btn = QPushButton("Edit Selected")
+        edit_btn.clicked.connect(self.edit_part)
+        
+        delete_btn = QPushButton("Delete Selected")
+        delete_btn.setStyleSheet("background-color: #EF4444; color: white;")
+        delete_btn.clicked.connect(self.delete_part)
+        
+        actions_layout.addWidget(edit_btn)
+        actions_layout.addWidget(delete_btn)
+        layout.addLayout(actions_layout)
+
+    def load_data(self):
+        query = self.search_input.text().strip()
+        if query:
+            parts = search_parts(query)
+        else:
+            parts = get_all_parts()
+            
+        self.table.setRowCount(0)
+        for row, part in enumerate(parts):
+            self.table.insertRow(row)
+            
+            self.table.setItem(row, 0, QTableWidgetItem(str(part['id'])))
+            self.table.setItem(row, 1, QTableWidgetItem(part['part_number']))
+            self.table.setItem(row, 2, QTableWidgetItem(part['part_name']))
+            self.table.setItem(row, 3, QTableWidgetItem(part['category'] or ""))
+            self.table.setItem(row, 4, QTableWidgetItem(part['location'] or ""))
+            
+            qty_item = QTableWidgetItem(str(part['quantity']))
+            if part['quantity'] <= part['min_quantity']:
+                qty_item.setBackground(QColor("#450A0A")) # Dark red bg for dark theme
+                qty_item.setForeground(QColor("#FCA5A5")) # Light red text
+            self.table.setItem(row, 5, qty_item)
+            
+            self.table.setItem(row, 6, QTableWidgetItem(format_currency(part['purchase_price'])))
+            self.table.setItem(row, 7, QTableWidgetItem(format_currency(part['selling_price'])))
+
+    def get_selected_part_id(self):
+        selected_rows = self.table.selectedItems()
+        if not selected_rows:
+            return None
+        row = selected_rows[0].row()
+        return int(self.table.item(row, 0).text())
+
+    def add_part(self):
+        dialog = PartDialog(self)
+        if dialog.exec():
+            data = dialog.get_data()
+            if not data['part_name'] or not data['part_number']:
+                QMessageBox.warning(self, "Error", "Part Name and Part Number are required.")
+                return
+            try:
+                add_part(data)
+                self.load_data()
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", str(e))
+
+    def edit_part(self, item=None):
+        part_id = self.get_selected_part_id()
+        if not part_id:
+            QMessageBox.information(self, "Select Part", "Please select a part to edit.")
+            return
+            
+        # Get part details
+        from database.models import get_part_by_id
+        part_data = get_part_by_id(part_id)
+        
+        dialog = PartDialog(self, part_data)
+        if dialog.exec():
+            data = dialog.get_data()
+            if not data['part_name'] or not data['part_number']:
+                QMessageBox.warning(self, "Error", "Part Name and Part Number are required.")
+                return
+            try:
+                update_part(part_id, data)
+                self.load_data()
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", str(e))
+
+    def delete_part(self):
+        part_id = self.get_selected_part_id()
+        if not part_id:
+            QMessageBox.information(self, "Select Part", "Please select a part to delete.")
+            return
+            
+        reply = QMessageBox.question(self, "Confirm Delete", 
+                                     "Are you sure you want to delete this part?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                                     
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                delete_part(part_id)
+                self.load_data()
+            except ValueError as e:
+                QMessageBox.warning(self, "Cannot Delete", str(e))
+            except Exception as e:
+                QMessageBox.critical(self, "Database Error", str(e))
+
+# We need to import QColor
+from PyQt6.QtGui import QColor
