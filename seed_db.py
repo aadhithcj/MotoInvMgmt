@@ -70,9 +70,18 @@ def seed():
         print(f"Inserted {len(parts)} parts.")
 
         # 4. Save Shop details
-        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_name', 'Royal Motorbike Spares')")
-        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_phone', '+91 90000 12345')")
-        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_address', '100 Feet Ring Road, JP Nagar, 2nd Phase, Bangalore - 560078')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_name', 'Gearfield')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_phone', '99463 53623')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_email', 'contact@gearfield.in')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_address', 'Pallipadan Building, Karukutty P O\nKarayamparambu, Angamaly')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_gstin', '32AAFFL4488E1ZD')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_state', 'Kerala, Code: 32')")
+        
+        # Bank Details
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('bank_name', 'State Bank of India')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('bank_ac_no', '12345678901')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('bank_branch', 'Angamaly')")
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('bank_ifsc', 'SBIN0000000')")
 
         conn.commit()
         print("Database seeded successfully with sample test data!")

@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor
 import os
+import sys
 
 from database.models import (get_all_customer_bills, get_all_parts, save_customer_bill, get_next_customer_bill_number)
 from utils.pdf_extractor_customer import extract_customer_bill
@@ -390,7 +391,7 @@ class CreateBillDialog(QDialog):
         
         add_btn = QPushButton("Add Item")
         add_btn.clicked.connect(self.add_empty_row)
-        layout.addWidget(add_btn, alignment=Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(add_btn, alignment=Qt.AlignmentFlag.AlignLeft)
         
         # --- Footer Section ---
         btn_layout = QHBoxLayout()
@@ -540,8 +541,13 @@ class CreateBillDialog(QDialog):
         }
         
         try:
-            # Generate PDF
-            bills_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bills", "customer_bills")
+            # Generate PDF in the executable's directory (or project root if running from source)
+            if getattr(sys, 'frozen', False):
+                app_dir = os.path.dirname(sys.executable)
+            else:
+                app_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                
+            bills_dir = os.path.join(app_dir, "bills", "customer_bills")
             pdf_path = os.path.join(bills_dir, f"{bill_number}.pdf")
             
             bill_data['pdf_filename'] = pdf_path

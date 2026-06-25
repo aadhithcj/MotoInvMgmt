@@ -134,6 +134,24 @@ def init_db():
             default_mapping = '{"part_number": ["part no", "part number", "code", "item code"], "part_name": ["description", "item", "name", "part name"], "quantity": ["qty", "quantity", "units"], "unit_price": ["price", "unit price", "rate"], "total": ["total", "amount", "line total"]}'
             cursor.execute("INSERT INTO settings (key, value) VALUES ('customer_bill_mapping', ?)", (default_mapping,))
 
+        # Initialize shop and bank defaults
+        defaults = {
+            'shop_name': 'Gearfield',
+            'shop_phone': '99463 53623',
+            'shop_email': 'contact@gearfield.in',
+            'shop_address': 'Pallipadan Building, Karukutty P O\nKarayamparambu, Angamaly',
+            'shop_gstin': '32AAFFL4488E1ZD',
+            'shop_state': 'Kerala, Code: 32',
+            'bank_name': 'State Bank of India',
+            'bank_ac_no': '12345678901',
+            'bank_branch': 'Angamaly',
+            'bank_ifsc': 'SBIN0000000'
+        }
+        for key, val in defaults.items():
+            cursor.execute("SELECT COUNT(*) FROM settings WHERE key=?", (key,))
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (key, val))
+
         conn.commit()
     except sqlite3.Error as e:
         print(f"Database initialization error: {e}")

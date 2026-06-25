@@ -2,8 +2,22 @@ import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
+from database.models import get_setting
 
 def generate_customer_invoice_pdf(bill_data, items_data, output_path):
+    # Load Shop and Bank settings from database
+    shop_name = get_setting('shop_name', 'Gearfield')
+    shop_phone = get_setting('shop_phone', '99463 53623')
+    shop_email = get_setting('shop_email', 'contact@gearfield.in')
+    shop_address = get_setting('shop_address', 'Pallipadan Building, Karukutty P O\nKarayamparambu, Angamaly')
+    shop_gstin = get_setting('shop_gstin', '32AAFFL4488E1ZD')
+    shop_state = get_setting('shop_state', 'Kerala, Code: 32')
+    
+    bank_name = get_setting('bank_name', 'State Bank of India')
+    bank_ac_no = get_setting('bank_ac_no', '12345678901')
+    bank_branch = get_setting('bank_branch', 'Angamaly')
+    bank_ifsc = get_setting('bank_ifsc', 'SBIN0000000')
+
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     
@@ -36,14 +50,29 @@ def generate_customer_invoice_pdf(bill_data, items_data, output_path):
     
     # Seller Info (Left)
     c.setFont(FONT_BOLD, 12)
-    c.drawString(left_x + 5, top_y - 15, "GEARFIELD")
-    c.setFont(FONT_NORMAL, 9)
-    c.drawString(left_x + 5, top_y - 30, "Pallipadan Building, Karukutty P O")
-    c.drawString(left_x + 5, top_y - 45, "Karayamparambu, Angamaly")
-    c.drawString(left_x + 5, top_y - 60, "Ph: 99463 53623 / 99473 22111")
-    c.drawString(left_x + 5, top_y - 75, "State: Kerala, Code: 32")
-    c.setFont(FONT_BOLD, 9)
-    c.drawString(left_x + 5, top_y - 90, "GSTIN/UIN: 32AAFFL4488E1ZD")
+    c.drawString(left_x + 5, top_y - 15, shop_name)
+    
+    curr_y = top_y - 28
+    addr_lines = [line.strip() for line in shop_address.split('\n') if line.strip()]
+    c.setFont(FONT_NORMAL, 8)
+    for line in addr_lines[:2]:
+        c.drawString(left_x + 5, curr_y, line)
+        curr_y -= 11
+        
+    contact_info = []
+    if shop_phone: contact_info.append(f"Ph: {shop_phone}")
+    if shop_email: contact_info.append(f"Email: {shop_email}")
+    if contact_info:
+        c.drawString(left_x + 5, curr_y, " / ".join(contact_info))
+        curr_y -= 11
+        
+    if shop_state:
+        c.drawString(left_x + 5, curr_y, f"State: {shop_state}")
+        curr_y -= 11
+        
+    if shop_gstin:
+        c.setFont(FONT_BOLD, 8)
+        c.drawString(left_x + 5, curr_y, f"GSTIN/UIN: {shop_gstin}")
     
     # Invoice Info (Right)
     c.setFont(FONT_BOLD, 9)
@@ -75,7 +104,7 @@ def generate_customer_invoice_pdf(bill_data, items_data, output_path):
     c.drawString(left_x + 5, header_bottom - 26, str(bill_data.get('customer_name', 'Cash Customer')))
     c.setFont(FONT_NORMAL, 9)
     c.drawString(left_x + 5, header_bottom - 40, f"Ph: {bill_data.get('customer_phone', '')}")
-    c.drawString(left_x + 5, header_bottom - 52, "State: Kerala, Code: 32")
+    c.drawString(left_x + 5, header_bottom - 52, f"State: {shop_state}")
     
     # ---------------- TABLE HEADER ----------------
     table_header_bottom = buyer_bottom - 20
@@ -186,14 +215,14 @@ def generate_customer_invoice_pdf(bill_data, items_data, output_path):
     
     c.setFont(FONT_NORMAL, 8)
     c.drawString(left_x + 5, bank_top - 12, "Company's Bank Details")
-    c.drawString(left_x + 5, bank_top - 24, "Bank Name     : State Bank of India")
-    c.drawString(left_x + 5, bank_top - 36, "A/c No.          : 12345678901")
-    c.drawString(left_x + 5, bank_top - 48, "Branch & IFS : Angamaly & SBIN0000000")
+    c.drawString(left_x + 5, bank_top - 24, f"Bank Name     : {bank_name}")
+    c.drawString(left_x + 5, bank_top - 36, f"A/c No.          : {bank_ac_no}")
+    c.drawString(left_x + 5, bank_top - 48, f"Branch & IFS : {bank_branch} & {bank_ifsc}")
     
     c.drawString(left_x + 5, bottom_y + 10, "Declaration: We declare that this invoice shows the actual price of the goods")
     
     c.setFont(FONT_BOLD, 9)
-    c.drawRightString(right_x - 5, bank_top - 12, "for GEARFIELD")
+    c.drawRightString(right_x - 5, bank_top - 12, f"for {shop_name}")
     c.setFont(FONT_NORMAL, 8)
     c.drawRightString(right_x - 5, bottom_y + 10, "Authorised Signatory")
     
