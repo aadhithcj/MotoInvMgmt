@@ -1,7 +1,15 @@
 import sqlite3
 import os
 
-DB_NAME = "motoshop.db"
+DB_NAME = "gearfield.db"
+
+# Migrate old database name if it exists and new one does not
+if not os.path.exists(DB_NAME) and os.path.exists("motoshop.db"):
+    try:
+        os.rename("motoshop.db", DB_NAME)
+        print("Migrated database file from motoshop.db to gearfield.db")
+    except Exception as e:
+        print(f"Database migration failed: {e}")
 
 def get_connection():
     """Returns a connection to the SQLite database."""

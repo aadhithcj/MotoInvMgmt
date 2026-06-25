@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_NAME = "motoshop.db"
+DB_NAME = "gearfield.db"
 
 def seed():
     if not os.path.exists(DB_NAME):

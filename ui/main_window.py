@@ -18,7 +18,7 @@ class MainWindow(QMainWindow):
         self.dark_style = dark_style
         self.light_style = light_style
         
-        self.setWindowTitle("Motoshop Inventory Management")
+        self.setWindowTitle("Gearfield Inventory Management")
         self.resize(1200, 800)
         
         self.current_theme = get_setting('theme', 'dark')
@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
         sidebar_layout.setSpacing(5)
 
         # Brand Label
-        brand_label = QLabel("MOTOSHOP")
+        brand_label = QLabel("GEARFIELD")
         brand_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #F97316; padding-left: 20px; padding-bottom: 20px;")
         sidebar_layout.addWidget(brand_label)
 
