@@ -1,5 +1,7 @@
 import sqlite3
 import os
+import sys
+import shutil
 
 DB_NAME = "gearfield.db"
 
@@ -10,6 +12,18 @@ if not os.path.exists(DB_NAME) and os.path.exists("motoshop.db"):
         print("Migrated database file from motoshop.db to gearfield.db")
     except Exception as e:
         print(f"Database migration failed: {e}")
+
+# If database doesn't exist locally, check if a pre-populated database is bundled inside the executable
+if not os.path.exists(DB_NAME):
+    meipass = getattr(sys, '_MEIPASS', None)
+    if meipass:
+        bundled_db = os.path.join(meipass, DB_NAME)
+        if os.path.exists(bundled_db):
+            try:
+                shutil.copy(bundled_db, DB_NAME)
+                print("Extracted bundled test database to local directory")
+            except Exception as e:
+                print(f"Failed to extract bundled database: {e}")
 
 def get_connection():
     """Returns a connection to the SQLite database."""
