@@ -281,3 +281,8 @@ def get_all_supplier_bills():
 def get_all_customer_bills():
     query = "SELECT * FROM customer_bills ORDER BY bill_date DESC"
     return execute_query(query, fetchall=True)
+
+def get_next_customer_bill_number():
+    res = execute_query("SELECT COUNT(*) as c FROM customer_bills", fetchone=True)
+    count = res['c'] + 1
+    return f"CB-{1000 + count}"

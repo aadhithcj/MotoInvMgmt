@@ -1,13 +1,15 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QMessageBox, QFileDialog, QDialog, QFormLayout, QLineEdit, 
-                             QDateEdit, QComboBox, QDoubleSpinBox)
+                             QDateEdit, QComboBox, QDoubleSpinBox, QSpinBox, QCompleter, QFrame)
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor
+import os
 
-from database.models import (get_all_customer_bills, get_all_parts, save_customer_bill)
+from database.models import (get_all_customer_bills, get_all_parts, save_customer_bill, get_next_customer_bill_number)
 from utils.pdf_extractor_customer import extract_customer_bill
 from utils.helpers import format_currency
+from utils.pdf_generator import generate_customer_invoice_pdf
 
 class CustomerReviewDialog(QDialog):
     def __init__(self, parent, extracted_data):
@@ -286,12 +288,17 @@ class CustomerBillsScreen(QWidget):
         title = QLabel("Customer Bills")
         title.setStyleSheet("font-size: 24px; font-weight: bold;")
         
+        create_btn = QPushButton("Create Customer Bill")
+        create_btn.setProperty("class", "Primary")
+        create_btn.clicked.connect(self.create_bill)
+
         upload_btn = QPushButton("Upload Bill PDF")
-        upload_btn.setProperty("class", "Primary")
+        upload_btn.setProperty("class", "Secondary")
         upload_btn.clicked.connect(self.upload_pdf)
         
         header_layout.addWidget(title)
         header_layout.addStretch()
+        header_layout.addWidget(create_btn)
         header_layout.addWidget(upload_btn)
         layout.addLayout(header_layout)
         
@@ -331,3 +338,227 @@ class CustomerBillsScreen(QWidget):
                 self.load_data()
         except Exception as e:
             QMessageBox.critical(self, "Extraction Error", f"Failed to process PDF:\n{str(e)}")
+
+    def create_bill(self):
+        dialog = CreateBillDialog(self)
+        if dialog.exec():
+            self.load_data()
+
+class CreateBillDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowTitle("Create Customer Bill")
+        self.setMinimumSize(1000, 600)
+        self.all_parts = get_all_parts()
+        
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        
+        # --- Header Section ---
+        header_group = QFormLayout()
+        
+        self.date_input = QDateEdit()
+        self.date_input.setDate(QDate.currentDate())
+        self.date_input.setCalendarPopup(True)
+        
+        self.cust_name_input = QLineEdit()
+        self.cust_phone_input = QLineEdit()
+        
+        self.discount_input = QDoubleSpinBox()
+        self.discount_input.setRange(0, 1000000)
+        self.discount_input.setDecimals(2)
+        self.discount_input.valueChanged.connect(self.update_totals)
+        
+        self.total_display = QLabel("0.00")
+        self.total_display.setStyleSheet("font-size: 18px; font-weight: bold; color: #F97316;")
+        
+        header_group.addRow("Date:", self.date_input)
+        header_group.addRow("Customer Name:", self.cust_name_input)
+        header_group.addRow("Customer Phone:", self.cust_phone_input)
+        header_group.addRow("Discount:", self.discount_input)
+        header_group.addRow("Total Amount:", self.total_display)
+        
+        layout.addLayout(header_group)
+        
+        # --- Table Section ---
+        self.table = QTableWidget(0, 6)
+        self.table.setHorizontalHeaderLabels(["Part Name", "Quantity", "Unit Price", "Amount", "Available Stock", "Action"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(self.table)
+        
+        add_btn = QPushButton("Add Item")
+        add_btn.clicked.connect(self.add_empty_row)
+        layout.addWidget(add_btn, alignment=Qt.AlignmentFlag.AlignRight)
+        
+        # --- Footer Section ---
+        btn_layout = QHBoxLayout()
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        
+        self.save_btn = QPushButton("Save && Generate PDF")
+        self.save_btn.setProperty("class", "Primary")
+        self.save_btn.clicked.connect(self.save_bill)
+        
+        btn_layout.addStretch()
+        btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(self.save_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        self.add_empty_row()
+
+    def add_empty_row(self):
+        row = self.table.rowCount()
+        self.table.insertRow(row)
+        
+        # Part Combobox
+        combo = QComboBox()
+        combo.setEditable(True)
+        combo.addItem("-- Select Part --", None)
+        for p in self.all_parts:
+            combo.addItem(f"{p['part_name']} ({p['part_number']})", p['id'])
+            
+        completer = QCompleter([combo.itemText(i) for i in range(combo.count())])
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        combo.setCompleter(completer)
+        
+        combo.currentIndexChanged.connect(lambda: self.on_part_selected(row, combo))
+        self.table.setCellWidget(row, 0, combo)
+        
+        # Quantity
+        qty_spin = QSpinBox()
+        qty_spin.setRange(1, 10000)
+        qty_spin.valueChanged.connect(self.update_totals)
+        self.table.setCellWidget(row, 1, qty_spin)
+        
+        # Unit Price
+        price_item = QTableWidgetItem("0.00")
+        price_item.setFlags(price_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        self.table.setItem(row, 2, price_item)
+        
+        # Amount
+        amt_item = QTableWidgetItem("0.00")
+        amt_item.setFlags(amt_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        self.table.setItem(row, 3, amt_item)
+        
+        # Available
+        avail_item = QTableWidgetItem("0")
+        avail_item.setFlags(avail_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+        self.table.setItem(row, 4, avail_item)
+        
+        # Action
+        del_btn = QPushButton("Remove")
+        del_btn.clicked.connect(lambda: self.remove_row(row))
+        self.table.setCellWidget(row, 5, del_btn)
+
+    def on_part_selected(self, row, combo):
+        part_id = combo.currentData()
+        if not part_id:
+            return
+            
+        part = next((p for p in self.all_parts if p['id'] == part_id), None)
+        if part:
+            self.table.item(row, 2).setText(str(part['selling_price']))
+            self.table.item(row, 4).setText(str(part['quantity']))
+            qty_spin = self.table.cellWidget(row, 1)
+            qty_spin.setMaximum(part['quantity']) # Restrict to available stock
+            self.update_totals()
+
+    def remove_row(self, row):
+        self.table.removeRow(row)
+        # Re-bind remaining remove buttons
+        for r in range(self.table.rowCount()):
+            del_btn = self.table.cellWidget(r, 5)
+            try: del_btn.clicked.disconnect() 
+            except: pass
+            del_btn.clicked.connect(lambda checked, row_idx=r: self.remove_row(row_idx))
+            
+            combo = self.table.cellWidget(r, 0)
+            try: combo.currentIndexChanged.disconnect()
+            except: pass
+            combo.currentIndexChanged.connect(lambda checked, row_idx=r, c=combo: self.on_part_selected(row_idx, c))
+            
+        self.update_totals()
+
+    def update_totals(self):
+        total = 0
+        for row in range(self.table.rowCount()):
+            qty_spin = self.table.cellWidget(row, 1)
+            price_item = self.table.item(row, 2)
+            amt_item = self.table.item(row, 3)
+            
+            if qty_spin and price_item and amt_item:
+                qty = qty_spin.value()
+                try: price = float(price_item.text())
+                except: price = 0
+                
+                amt = qty * price
+                amt_item.setText(f"{amt:.2f}")
+                total += amt
+                
+        total -= self.discount_input.value()
+        self.total_display.setText(f"{max(0, total):.2f}")
+
+    def save_bill(self):
+        items_data = []
+        for row in range(self.table.rowCount()):
+            combo = self.table.cellWidget(row, 0)
+            part_id = combo.currentData()
+            
+            if not part_id:
+                continue
+                
+            qty = self.table.cellWidget(row, 1).value()
+            price = float(self.table.item(row, 2).text())
+            
+            part = next((p for p in self.all_parts if p['id'] == part_id), None)
+            
+            items_data.append({
+                'part_id': part_id,
+                'quantity': qty,
+                'unit_price': price,
+                'part_name': part['part_name'] if part else '',
+                'part_number': part['part_number'] if part else ''
+            })
+            
+        if not items_data:
+            QMessageBox.warning(self, "Validation", "Please add at least one part to the bill.")
+            return
+            
+        bill_number = get_next_customer_bill_number()
+        
+        bill_data = {
+            'bill_number': bill_number,
+            'customer_name': self.cust_name_input.text().strip(),
+            'customer_phone': self.cust_phone_input.text().strip(),
+            'discount': self.discount_input.value(),
+            'total_amount': float(self.total_display.text()),
+            'bill_date': self.date_input.date().toString("yyyy-MM-dd")
+        }
+        
+        try:
+            # Generate PDF
+            bills_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bills", "customer_bills")
+            pdf_path = os.path.join(bills_dir, f"{bill_number}.pdf")
+            
+            bill_data['pdf_filename'] = pdf_path
+            
+            # Save to DB (Decreases Stock)
+            save_customer_bill(bill_data, items_data)
+            
+            # Create the actual PDF file
+            generate_customer_invoice_pdf(bill_data, items_data, pdf_path)
+            
+            msg = f"Bill saved and stock updated successfully.\nPDF Generated at:\n{pdf_path}"
+            QMessageBox.information(self, "Success", msg)
+            
+            # Auto-open PDF
+            if os.name == 'nt':
+                os.startfile(pdf_path)
+                
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
