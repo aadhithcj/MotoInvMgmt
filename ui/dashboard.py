@@ -77,7 +77,7 @@ class DashboardScreen(QWidget):
         self.low_stock_table = QTableWidget(0, 4)
         self.low_stock_table.setHorizontalHeaderLabels(["Part Name", "Part Number", "Qty", "Min Qty"])
         self.low_stock_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.low_stock_table.setStyleSheet("QTableWidget { border: 1px solid #EF4444; }")
+        self.low_stock_table.setStyleSheet("QTableWidget { border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 12px; }")
         
         low_stock_group.addWidget(ls_title)
         low_stock_group.addWidget(self.low_stock_table)

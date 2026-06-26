@@ -27,7 +27,7 @@ class SettingsScreen(QWidget):
         
         scroll_widget = QWidget()
         scroll_layout = QVBoxLayout(scroll_widget)
-        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setContentsMargins(0, 0, 15, 0)
         scroll_layout.setSpacing(15)
         
         # Shop Details Group
@@ -48,7 +48,7 @@ class SettingsScreen(QWidget):
         self.choose_logo_btn = QPushButton("Choose Logo")
         self.choose_logo_btn.clicked.connect(self.choose_logo)
         self.remove_logo_btn = QPushButton("Remove Logo")
-        self.remove_logo_btn.setStyleSheet("background-color: #EF4444; color: white;")
+        self.remove_logo_btn.setStyleSheet("background-color: #EF4444; color: white; border-radius: 8px; border: none;")
         self.remove_logo_btn.clicked.connect(self.remove_logo)
         
         logo_layout = QHBoxLayout()

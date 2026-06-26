@@ -91,7 +91,7 @@ class SuppliersScreen(QWidget):
         edit_btn.clicked.connect(self.edit_supplier)
         
         delete_btn = QPushButton("Delete Selected")
-        delete_btn.setStyleSheet("background-color: #EF4444; color: white;")
+        delete_btn.setStyleSheet("background-color: #EF4444; color: white; border-radius: 8px; border: none;")
         delete_btn.clicked.connect(self.delete_supplier)
         
         actions_layout.addWidget(edit_btn)

@@ -165,9 +165,9 @@ class SupplierReviewDialog(QDialog):
         menu = QMenu(self)
         
         if combo.currentData() is None:
-            create_action = menu.addAction("✨ Create New Part")
+            create_action = menu.addAction("Create New Part")
             menu.addSeparator()
-            remove_action = menu.addAction("🗑️ Remove Row")
+            remove_action = menu.addAction("Remove Row")
             
             action = menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
             if action == create_action:
@@ -362,12 +362,14 @@ class SupplierBillsScreen(QWidget):
         filter_layout.addWidget(QLabel("Search:"))
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search by Supplier Name or Bill No...")
+        self.search_input.setMaximumWidth(350)
         self.search_input.textChanged.connect(self.filter_bills)
         filter_layout.addWidget(self.search_input)
         
         filter_layout.addWidget(QLabel("From:"))
         self.start_date = QDateEdit()
         self.start_date.setCalendarPopup(True)
+        self.start_date.setMinimumWidth(110)
         self.start_date.setDate(QDate.currentDate().addYears(-1))
         self.start_date.dateChanged.connect(self.filter_bills)
         filter_layout.addWidget(self.start_date)
@@ -375,6 +377,7 @@ class SupplierBillsScreen(QWidget):
         filter_layout.addWidget(QLabel("To:"))
         self.end_date = QDateEdit()
         self.end_date.setCalendarPopup(True)
+        self.end_date.setMinimumWidth(110)
         self.end_date.setDate(QDate.currentDate().addDays(1))
         self.end_date.dateChanged.connect(self.filter_bills)
         filter_layout.addWidget(self.end_date)

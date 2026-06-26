@@ -1,14 +1,9 @@
-import sys
-import os
-import tempfile
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QIcon, QPalette, QColor, QPixmap, QPainter, QPolygon
-from PyQt6.QtCore import Qt, QPoint
-from database.connection import init_db
-from database.models import get_setting
-from ui.main_window import MainWindow
+import re
 
-DARK_THEME_STYLE = """
+with open('main.py', 'r', encoding='utf-8') as f:
+    content = f.read()
+
+new_dark = '''DARK_THEME_STYLE = """
 QMainWindow, QWidget {
     background-color: #0B1121;
     color: #F1F5F9;
@@ -123,14 +118,15 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
 QTableWidget, QTableView {
     background-color: #0B1121;
     color: #E2E8F0;
-    gridline-color: rgba(255, 255, 255, 0.05);
+    gridline-color: transparent;
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 12px;
     selection-background-color: rgba(249, 115, 22, 0.15);
     selection-color: #F97316;
 }
 QTableWidget::item {
-    padding: 4px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 12px;
 }
 QTableWidget::item:selected {
     background-color: rgba(249, 115, 22, 0.15);
@@ -146,7 +142,7 @@ QHeaderView::section {
 QScrollBar:vertical {
     border: none;
     background: transparent;
-    width: 5px;
+    width: 8px;
     margin: 0px;
 }
 QScrollBar::handle:vertical {
@@ -199,23 +195,9 @@ QLabel#StatCardValue {
     border: none;
     background-color: transparent;
 }
+"""'''
 
-QGroupBox {
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    margin-top: 18px;
-    font-weight: bold;
-}
-QGroupBox::title {
-    subcontrol-origin: margin;
-    subcontrol-position: top left;
-    left: 10px;
-    padding: 0 5px;
-    color: #94A3B8;
-}
-"""
-
-LIGHT_THEME_STYLE = """
+new_light = '''LIGHT_THEME_STYLE = """
 QMainWindow, QWidget {
     background-color: #F8FAFC;
     color: #0F172A;
@@ -329,14 +311,15 @@ QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
 QTableWidget, QTableView {
     background-color: #FFFFFF;
     color: #334155;
-    gridline-color: rgba(0, 0, 0, 0.05);
+    gridline-color: transparent;
     border: 1px solid rgba(0, 0, 0, 0.05);
     border-radius: 12px;
     selection-background-color: rgba(249, 115, 22, 0.1);
     selection-color: #EA580C;
 }
 QTableWidget::item {
-    padding: 4px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 8px 12px;
 }
 QTableWidget::item:selected {
     background-color: rgba(249, 115, 22, 0.1);
@@ -352,7 +335,7 @@ QHeaderView::section {
 QScrollBar:vertical {
     border: none;
     background: transparent;
-    width: 5px;
+    width: 8px;
     margin: 0px;
 }
 QScrollBar::handle:vertical {
@@ -405,91 +388,16 @@ QLabel#StatCardValue {
     border: none;
     background-color: transparent;
 }
+"""'''
 
-QGroupBox {
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    border-radius: 8px;
-    margin-top: 18px;
-    font-weight: bold;
-}
-QGroupBox::title {
-    subcontrol-origin: margin;
-    subcontrol-position: top left;
-    left: 10px;
-    padding: 0 5px;
-    color: #64748B;
-}
-"""
+# Replace DARK_THEME_STYLE block
+dark_pattern = re.compile(r'DARK_THEME_STYLE\s*=\s*\"\"\"[\s\S]*?\"\"\"', re.MULTILINE)
+content = dark_pattern.sub(new_dark, content)
 
-def create_arrow_image(file_path, direction, color):
-    pixmap = QPixmap(12, 12)
-    pixmap.fill(QColor(0, 0, 0, 0))
-    
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setPen(color)
-    painter.setBrush(color)
-    
-    if direction == "up":
-        polygon = QPolygon([
-            QPoint(6, 3),
-            QPoint(2, 8),
-            QPoint(10, 8)
-        ])
-    else:
-        polygon = QPolygon([
-            QPoint(6, 8),
-            QPoint(2, 3),
-            QPoint(10, 3)
-        ])
-        
-    painter.drawPolygon(polygon)
-    painter.end()
-    pixmap.save(file_path, "PNG")
+# Replace LIGHT_THEME_STYLE block
+light_pattern = re.compile(r'LIGHT_THEME_STYLE\s*=\s*\"\"\"[\s\S]*?\"\"\"', re.MULTILINE)
+content = light_pattern.sub(new_light, content)
 
-def generate_arrow_icons():
-    temp_dir = tempfile.gettempdir()
-    up_path = os.path.join(temp_dir, "gearfield_up_arrow.png").replace('\\', '/')
-    down_path = os.path.join(temp_dir, "gearfield_down_arrow.png").replace('\\', '/')
-    up_path_dark = os.path.join(temp_dir, "gearfield_up_arrow_dark.png").replace('\\', '/')
-    down_path_dark = os.path.join(temp_dir, "gearfield_down_arrow_dark.png").replace('\\', '/')
-    
-    create_arrow_image(up_path, "up", QColor("#E2E8F0"))
-    create_arrow_image(down_path, "down", QColor("#E2E8F0"))
-    create_arrow_image(up_path_dark, "up", QColor("#0F172A"))
-    create_arrow_image(down_path_dark, "down", QColor("#0F172A"))
-    
-    return up_path, down_path, up_path_dark, down_path_dark
-
-def main():
-    app = QApplication(sys.argv)
-    
-    # Generate spin box arrow icons dynamically
-    up_path, down_path, up_path_dark, down_path_dark = generate_arrow_icons()
-    
-    global DARK_THEME_STYLE, LIGHT_THEME_STYLE
-    DARK_THEME_STYLE = DARK_THEME_STYLE.replace("{up_arrow_url}", up_path).replace("{down_arrow_url}", down_path)
-    LIGHT_THEME_STYLE = LIGHT_THEME_STYLE.replace("{up_arrow_url_dark}", up_path_dark).replace("{down_arrow_url_dark}", down_path_dark)
-
-    # Force high DPI scaling if supported
-    if hasattr(Qt.ApplicationAttribute, 'AA_EnableHighDpiScaling'):
-        QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
-    if hasattr(Qt.ApplicationAttribute, 'AA_UseHighDpiPixmaps'):
-        QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
-
-    # Initialize Database
-    init_db()
-
-    # Apply Theme
-    theme = get_setting('theme', 'dark')
-    if theme == 'light':
-        app.setStyleSheet(LIGHT_THEME_STYLE)
-    else:
-        app.setStyleSheet(DARK_THEME_STYLE)
-
-    window = MainWindow(app, DARK_THEME_STYLE, LIGHT_THEME_STYLE)
-    window.show()
-    sys.exit(app.exec())
-
-if __name__ == "__main__":
-    main()
+with open('main.py', 'w', encoding='utf-8') as f:
+    f.write(content)
+print("Updated stylesheets in main.py")
