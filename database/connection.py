@@ -74,9 +74,16 @@ def init_db():
                 pdf_filename TEXT,
                 total_amount REAL,
                 bill_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                notes TEXT
+                notes TEXT,
+                status TEXT DEFAULT 'Paid'
             )
         ''')
+
+        # Migration: Add status column to customer_bills if it doesn't exist
+        try:
+            cursor.execute("ALTER TABLE customer_bills ADD COLUMN status TEXT DEFAULT 'Paid'")
+        except sqlite3.OperationalError:
+            pass
 
         # Table: supplier_bill_items
         cursor.execute('''

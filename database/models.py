@@ -286,3 +286,39 @@ def get_next_customer_bill_number():
     res = execute_query("SELECT COUNT(*) as c FROM customer_bills", fetchone=True)
     count = res['c'] + 1
     return f"CB-{1000 + count}"
+
+def void_customer_bill(bill_id):
+    """
+    Voids a customer bill and returns the stock of items back to the inventory.
+    """
+    conn = get_connection()
+    conn.row_factory = dict_factory
+    cursor = conn.cursor()
+    try:
+        # Check current status
+        cursor.execute("SELECT status FROM customer_bills WHERE id=?", (bill_id,))
+        bill = cursor.fetchone()
+        if not bill:
+            raise ValueError("Bill not found.")
+        if bill['status'] == 'Voided':
+            raise ValueError("Bill is already voided.")
+            
+        # Get items
+        cursor.execute("SELECT part_id, quantity FROM customer_bill_items WHERE bill_id=?", (bill_id,))
+        items = cursor.fetchall()
+        
+        # Restore stock
+        for item in items:
+            part_id = item['part_id']
+            qty = item['quantity']
+            cursor.execute("UPDATE parts SET quantity = quantity + ? WHERE id = ?", (qty, part_id))
+            
+        # Update status
+        cursor.execute("UPDATE customer_bills SET status = 'Voided' WHERE id = ?", (bill_id,))
+        
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

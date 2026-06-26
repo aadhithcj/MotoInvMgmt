@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QMessageBox, QFileDialog, QTabWidget, QDateEdit)
 from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QColor
 from database.models import execute_query
 from utils.helpers import format_currency
 
@@ -37,7 +38,29 @@ class ReportsScreen(QWidget):
         self.setup_purchase_tab()
         self.tabs.addTab(self.purchase_tab, "Purchase Report")
         
+        # Low Stock Alerts Tab
+        self.low_stock_tab = QWidget()
+        self.setup_low_stock_tab()
+        self.tabs.addTab(self.low_stock_tab, "Low Stock Alerts")
+        
         layout.addWidget(self.tabs)
+
+    def setup_low_stock_tab(self):
+        layout = QVBoxLayout(self.low_stock_tab)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        export_btn = QPushButton("Export CSV Reorder Sheet")
+        export_btn.setProperty("class", "Primary")
+        export_btn.clicked.connect(self.export_low_stock)
+        btn_layout.addWidget(export_btn)
+        
+        layout.addLayout(btn_layout)
+        
+        self.low_stock_table = QTableWidget(0, 7)
+        self.low_stock_table.setHorizontalHeaderLabels(["Part Number", "Part Name", "Category", "Location", "Current Qty", "Min Qty", "Pur. Price"])
+        self.low_stock_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        layout.addWidget(self.low_stock_table)
 
     def setup_stock_tab(self):
         layout = QVBoxLayout(self.stock_tab)
@@ -129,6 +152,7 @@ class ReportsScreen(QWidget):
         self.load_stock_data()
         self.load_sales_data()
         self.load_purchase_data()
+        self.load_low_stock_data()
 
     def load_stock_data(self):
         parts = execute_query("SELECT * FROM parts ORDER BY part_name", fetchall=True)
@@ -191,6 +215,23 @@ class ReportsScreen(QWidget):
             self.pur_table.setItem(row, 4, QTableWidgetItem(str(item['quantity'])))
             self.pur_table.setItem(row, 5, QTableWidgetItem(format_currency(item['amount'])))
 
+    def load_low_stock_data(self):
+        parts = execute_query("SELECT * FROM parts WHERE quantity <= min_quantity ORDER BY quantity ASC", fetchall=True)
+        self.low_stock_table.setRowCount(0)
+        for row, part in enumerate(parts):
+            self.low_stock_table.insertRow(row)
+            self.low_stock_table.setItem(row, 0, QTableWidgetItem(part['part_number']))
+            self.low_stock_table.setItem(row, 1, QTableWidgetItem(part['part_name']))
+            self.low_stock_table.setItem(row, 2, QTableWidgetItem(part['category'] or ""))
+            self.low_stock_table.setItem(row, 3, QTableWidgetItem(part['location'] or ""))
+            
+            qty_item = QTableWidgetItem(str(part['quantity']))
+            qty_item.setForeground(QColor("#EF4444"))
+            self.low_stock_table.setItem(row, 4, qty_item)
+            
+            self.low_stock_table.setItem(row, 5, QTableWidgetItem(str(part['min_quantity'])))
+            self.low_stock_table.setItem(row, 6, QTableWidgetItem(format_currency(part['purchase_price'])))
+
     def export_csv(self, table, default_name):
         path, _ = QFileDialog.getSaveFileName(self, "Save CSV", default_name, "CSV Files (*.csv)")
         if not path:
@@ -225,3 +266,6 @@ class ReportsScreen(QWidget):
 
     def export_purchases(self):
         self.export_csv(self.pur_table, "purchase_report.csv")
+
+    def export_low_stock(self):
+        self.export_csv(self.low_stock_table, "reorder_sheet.csv")

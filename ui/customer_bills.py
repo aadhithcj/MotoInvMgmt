@@ -1,9 +1,9 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QMessageBox, QFileDialog, QDialog, QFormLayout, QLineEdit, 
-                             QDateEdit, QComboBox, QDoubleSpinBox, QSpinBox, QCompleter, QFrame)
+                             QDateEdit, QComboBox, QDoubleSpinBox, QSpinBox, QCompleter, QFrame, QMenu)
 from PyQt6.QtCore import Qt, QDate
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QAction
 import os
 import sys
 
@@ -303,19 +303,75 @@ class CustomerBillsScreen(QWidget):
         header_layout.addWidget(upload_btn)
         layout.addLayout(header_layout)
         
+        # Filter Row
+        filter_layout = QHBoxLayout()
+        
+        filter_layout.addWidget(QLabel("Search:"))
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search by Customer Name, Bill No, or Phone...")
+        self.search_input.textChanged.connect(self.filter_bills)
+        filter_layout.addWidget(self.search_input)
+        
+        filter_layout.addWidget(QLabel("From:"))
+        self.start_date = QDateEdit()
+        self.start_date.setCalendarPopup(True)
+        self.start_date.setDate(QDate.currentDate().addYears(-1))
+        self.start_date.dateChanged.connect(self.filter_bills)
+        filter_layout.addWidget(self.start_date)
+        
+        filter_layout.addWidget(QLabel("To:"))
+        self.end_date = QDateEdit()
+        self.end_date.setCalendarPopup(True)
+        self.end_date.setDate(QDate.currentDate().addDays(1))
+        self.end_date.dateChanged.connect(self.filter_bills)
+        filter_layout.addWidget(self.end_date)
+        
+        layout.addLayout(filter_layout)
+        
         # Table
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["Date", "Bill No.", "Customer", "Phone", "Amount", "Status"])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self.show_context_menu)
         
         layout.addWidget(self.table)
 
     def load_data(self):
-        bills = get_all_customer_bills()
+        self.bills = get_all_customer_bills()
+        self.filter_bills()
+
+    def filter_bills(self):
+        search_txt = self.search_input.text().strip().lower()
+        start = self.start_date.date()
+        end = self.end_date.date()
+        
         self.table.setRowCount(0)
-        for row, bill in enumerate(bills):
+        self.filtered_bills = []
+        
+        for bill in self.bills:
+            # Check Date
+            try:
+                b_date = QDate.fromString(bill['bill_date'].split(' ')[0], "yyyy-MM-dd")
+            except:
+                b_date = QDate.currentDate()
+                
+            if b_date < start or b_date > end:
+                continue
+                
+            # Check Search Text
+            bill_num = bill['bill_number'].lower()
+            cust_name = (bill['customer_name'] or "").lower()
+            cust_phone = (bill['customer_phone'] or "").lower()
+            
+            if search_txt and (search_txt not in bill_num and search_txt not in cust_name and search_txt not in cust_phone):
+                continue
+                
+            self.filtered_bills.append(bill)
+            
+        for row, bill in enumerate(self.filtered_bills):
             self.table.insertRow(row)
             self.table.setItem(row, 0, QTableWidgetItem(bill['bill_date'].split(' ')[0]))
             self.table.setItem(row, 1, QTableWidgetItem(bill['bill_number']))
@@ -323,9 +379,43 @@ class CustomerBillsScreen(QWidget):
             self.table.setItem(row, 3, QTableWidgetItem(bill['customer_phone'] or ""))
             self.table.setItem(row, 4, QTableWidgetItem(format_currency(bill['total_amount'])))
             
-            status_item = QTableWidgetItem("Confirmed")
-            status_item.setForeground(QColor("#4ADE80"))
+            status_val = bill.get('status', 'Paid') or 'Paid'
+            status_item = QTableWidgetItem(status_val)
+            if status_val == 'Voided':
+                status_item.setForeground(QColor("#EF4444"))
+            else:
+                status_item.setForeground(QColor("#4ADE80"))
             self.table.setItem(row, 5, status_item)
+
+    def show_context_menu(self, pos):
+        row = self.table.currentRow()
+        if row < 0 or not hasattr(self, 'filtered_bills') or row >= len(self.filtered_bills):
+            return
+            
+        bill = self.filtered_bills[row]
+        if bill.get('status', 'Paid') == 'Voided':
+            return
+            
+        menu = QMenu(self)
+        void_action = QAction("Void Bill (Return Stock)", self)
+        void_action.triggered.connect(lambda: self.confirm_void_bill(bill))
+        menu.addAction(void_action)
+        menu.exec(self.table.mapToGlobal(pos))
+        
+    def confirm_void_bill(self, bill):
+        reply = QMessageBox.question(self, "Void Bill", 
+                                     f"Are you sure you want to void bill {bill['bill_number']}?\nThis will return all items in this bill back to stock.",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+            
+        try:
+            from database.models import void_customer_bill
+            void_customer_bill(bill['id'])
+            QMessageBox.information(self, "Success", "Bill voided successfully and stock returned.")
+            self.load_data()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not void bill: {str(e)}")
 
     def upload_pdf(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select Customer Bill PDF", "", "PDF Files (*.pdf)")

@@ -1,8 +1,9 @@
 import sys
 import os
+import tempfile
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtGui import QIcon, QPalette, QColor
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon, QPalette, QColor, QPixmap, QPainter, QPolygon
+from PyQt6.QtCore import Qt, QPoint
 from database.connection import init_db
 from database.models import get_setting
 from ui.main_window import MainWindow
@@ -54,15 +55,61 @@ QPushButton.NavButton:checked {
     color: white;
     font-weight: bold;
 }
-QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+QLineEdit, QComboBox {
     background-color: #1E293B;
     color: #E2E8F0;
     border: 1px solid #475569;
     padding: 6px 10px;
     border-radius: 4px;
 }
-QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+QLineEdit:focus, QComboBox:focus {
     border: 1px solid #F97316;
+}
+QSpinBox, QDoubleSpinBox {
+    background-color: #1E293B;
+    color: #E2E8F0;
+    border: 1px solid #475569;
+    padding: 6px 30px 6px 10px;
+    border-radius: 4px;
+    min-height: 20px;
+}
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #F97316;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 26px;
+    height: 16px;
+    border-left: 1px solid #475569;
+    border-bottom: 1px solid #475569;
+    background-color: #334155;
+    border-top-right-radius: 4px;
+}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
+    background-color: #475569;
+}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url({up_arrow_url});
+    width: 10px;
+    height: 10px;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 26px;
+    height: 16px;
+    border-left: 1px solid #475569;
+    background-color: #334155;
+    border-bottom-right-radius: 4px;
+}
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #475569;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url({down_arrow_url});
+    width: 10px;
+    height: 10px;
 }
 QTableWidget, QTableView {
     background-color: #1E293B;
@@ -159,15 +206,61 @@ QPushButton.NavButton:checked {
     color: white;
     font-weight: bold;
 }
-QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+QLineEdit, QComboBox {
     background-color: #FFFFFF;
     color: #0F172A;
     border: 1px solid #CBD5E1;
     padding: 6px 10px;
     border-radius: 4px;
 }
-QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+QLineEdit:focus, QComboBox:focus {
     border: 1px solid #F97316;
+}
+QSpinBox, QDoubleSpinBox {
+    background-color: #FFFFFF;
+    color: #0F172A;
+    border: 1px solid #CBD5E1;
+    padding: 6px 30px 6px 10px;
+    border-radius: 4px;
+    min-height: 20px;
+}
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 1px solid #F97316;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 26px;
+    height: 16px;
+    border-left: 1px solid #CBD5E1;
+    border-bottom: 1px solid #CBD5E1;
+    background-color: #E2E8F0;
+    border-top-right-radius: 4px;
+}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {
+    background-color: #CBD5E1;
+}
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url({up_arrow_url_dark});
+    width: 10px;
+    height: 10px;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 26px;
+    height: 16px;
+    border-left: 1px solid #CBD5E1;
+    background-color: #E2E8F0;
+    border-bottom-right-radius: 4px;
+}
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #CBD5E1;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url({down_arrow_url_dark});
+    width: 10px;
+    height: 10px;
 }
 QTableWidget, QTableView {
     background-color: #FFFFFF;
@@ -217,9 +310,56 @@ QLabel#StatCardValue {
 }
 """
 
+def create_arrow_image(file_path, direction, color):
+    pixmap = QPixmap(12, 12)
+    pixmap.fill(QColor(0, 0, 0, 0))
+    
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(color)
+    painter.setBrush(color)
+    
+    if direction == "up":
+        polygon = QPolygon([
+            QPoint(6, 3),
+            QPoint(2, 8),
+            QPoint(10, 8)
+        ])
+    else:
+        polygon = QPolygon([
+            QPoint(6, 8),
+            QPoint(2, 3),
+            QPoint(10, 3)
+        ])
+        
+    painter.drawPolygon(polygon)
+    painter.end()
+    pixmap.save(file_path, "PNG")
+
+def generate_arrow_icons():
+    temp_dir = tempfile.gettempdir()
+    up_path = os.path.join(temp_dir, "gearfield_up_arrow.png").replace('\\', '/')
+    down_path = os.path.join(temp_dir, "gearfield_down_arrow.png").replace('\\', '/')
+    up_path_dark = os.path.join(temp_dir, "gearfield_up_arrow_dark.png").replace('\\', '/')
+    down_path_dark = os.path.join(temp_dir, "gearfield_down_arrow_dark.png").replace('\\', '/')
+    
+    create_arrow_image(up_path, "up", QColor("#E2E8F0"))
+    create_arrow_image(down_path, "down", QColor("#E2E8F0"))
+    create_arrow_image(up_path_dark, "up", QColor("#0F172A"))
+    create_arrow_image(down_path_dark, "down", QColor("#0F172A"))
+    
+    return up_path, down_path, up_path_dark, down_path_dark
+
 def main():
     app = QApplication(sys.argv)
     
+    # Generate spin box arrow icons dynamically
+    up_path, down_path, up_path_dark, down_path_dark = generate_arrow_icons()
+    
+    global DARK_THEME_STYLE, LIGHT_THEME_STYLE
+    DARK_THEME_STYLE = DARK_THEME_STYLE.replace("{up_arrow_url}", up_path).replace("{down_arrow_url}", down_path)
+    LIGHT_THEME_STYLE = LIGHT_THEME_STYLE.replace("{up_arrow_url_dark}", up_path_dark).replace("{down_arrow_url_dark}", down_path_dark)
+
     # Force high DPI scaling if supported
     if hasattr(Qt.ApplicationAttribute, 'AA_EnableHighDpiScaling'):
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)

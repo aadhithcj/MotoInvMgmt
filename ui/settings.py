@@ -1,7 +1,8 @@
 import json
+import shutil
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QLineEdit, QTextEdit, QFormLayout, 
-                             QMessageBox, QGroupBox, QScrollArea)
+                             QMessageBox, QGroupBox, QScrollArea, QFileDialog)
 from database.models import get_setting, set_setting
 
 class SettingsScreen(QWidget):
@@ -40,12 +41,22 @@ class SettingsScreen(QWidget):
         self.shop_address = QTextEdit()
         self.shop_address.setFixedHeight(60)
         
+        # Logo Selection Row
+        self.shop_logo_path = QLineEdit()
+        self.shop_logo_path.setReadOnly(True)
+        self.choose_logo_btn = QPushButton("Choose Logo")
+        self.choose_logo_btn.clicked.connect(self.choose_logo)
+        logo_layout = QHBoxLayout()
+        logo_layout.addWidget(self.shop_logo_path)
+        logo_layout.addWidget(self.choose_logo_btn)
+        
         shop_layout.addRow("Shop Name:", self.shop_name)
         shop_layout.addRow("Phone Number:", self.shop_phone)
         shop_layout.addRow("Email Address:", self.shop_email)
         shop_layout.addRow("GSTIN / UIN:", self.shop_gstin)
         shop_layout.addRow("State & State Code:", self.shop_state)
         shop_layout.addRow("Address:", self.shop_address)
+        shop_layout.addRow("Shop Logo:", logo_layout)
         shop_group.setLayout(shop_layout)
         scroll_layout.addWidget(shop_group)
         
@@ -81,6 +92,21 @@ class SettingsScreen(QWidget):
         mapping_group.setLayout(mapping_layout)
         scroll_layout.addWidget(mapping_group)
         
+        # Database Backup & Restore Group
+        db_group = QGroupBox("Database Backup & Restore")
+        db_layout = QHBoxLayout()
+        
+        backup_btn = QPushButton("Backup Database")
+        backup_btn.clicked.connect(self.backup_database)
+        
+        restore_btn = QPushButton("Restore Database")
+        restore_btn.clicked.connect(self.restore_database)
+        
+        db_layout.addWidget(backup_btn)
+        db_layout.addWidget(restore_btn)
+        db_group.setLayout(db_layout)
+        scroll_layout.addWidget(db_group)
+        
         scroll.setWidget(scroll_widget)
         main_layout.addWidget(scroll)
         
@@ -103,6 +129,7 @@ class SettingsScreen(QWidget):
         self.shop_gstin.setText(get_setting('shop_gstin', ''))
         self.shop_state.setText(get_setting('shop_state', ''))
         self.shop_address.setPlainText(get_setting('shop_address', ''))
+        self.shop_logo_path.setText(get_setting('shop_logo_path', ''))
         
         self.bank_name.setText(get_setting('bank_name', ''))
         self.bank_ac_no.setText(get_setting('bank_ac_no', ''))
@@ -126,6 +153,7 @@ class SettingsScreen(QWidget):
         set_setting('shop_gstin', self.shop_gstin.text().strip())
         set_setting('shop_state', self.shop_state.text().strip())
         set_setting('shop_address', self.shop_address.toPlainText().strip())
+        set_setting('shop_logo_path', self.shop_logo_path.text().strip())
         
         set_setting('bank_name', self.bank_name.text().strip())
         set_setting('bank_ac_no', self.bank_ac_no.text().strip())
@@ -140,4 +168,40 @@ class SettingsScreen(QWidget):
             QMessageBox.information(self, "Success", "Settings saved successfully.")
         except json.JSONDecodeError as e:
             QMessageBox.warning(self, "Invalid JSON", f"Could not save Column Mapping. Invalid JSON format:\n{str(e)}")
+
+    def choose_logo(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select Shop Logo", "", "Image Files (*.png *.jpg *.jpeg)")
+        if path:
+            self.shop_logo_path.setText(path)
+            
+    def backup_database(self):
+        default_name = "gearfield_backup.db"
+        path, _ = QFileDialog.getSaveFileName(self, "Backup Database", default_name, "Database Files (*.db)")
+        if not path:
+            return
+            
+        try:
+            from database.connection import DB_NAME
+            shutil.copy(DB_NAME, path)
+            QMessageBox.information(self, "Backup Success", f"Database backed up successfully to:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Backup Failed", f"Could not backup database:\n{str(e)}")
+            
+    def restore_database(self):
+        reply = QMessageBox.question(self, "Restore Database", 
+                                     "Restoring a database will overwrite your current data. Are you sure you want to proceed?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+            
+        path, _ = QFileDialog.getOpenFileName(self, "Select Database Backup", "", "Database Files (*.db)")
+        if not path:
+            return
+            
+        try:
+            from database.connection import DB_NAME
+            shutil.copy(path, DB_NAME)
+            QMessageBox.information(self, "Restore Success", "Database restored successfully. Please restart the application to apply all changes.")
+        except Exception as e:
+            QMessageBox.critical(self, "Restore Failed", f"Could not restore database:\n{str(e)}")
 

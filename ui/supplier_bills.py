@@ -336,6 +336,31 @@ class SupplierBillsScreen(QWidget):
         header_layout.addWidget(upload_btn)
         layout.addLayout(header_layout)
         
+        # Filter Row
+        filter_layout = QHBoxLayout()
+        
+        filter_layout.addWidget(QLabel("Search:"))
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search by Supplier Name or Bill No...")
+        self.search_input.textChanged.connect(self.filter_bills)
+        filter_layout.addWidget(self.search_input)
+        
+        filter_layout.addWidget(QLabel("From:"))
+        self.start_date = QDateEdit()
+        self.start_date.setCalendarPopup(True)
+        self.start_date.setDate(QDate.currentDate().addYears(-1))
+        self.start_date.dateChanged.connect(self.filter_bills)
+        filter_layout.addWidget(self.start_date)
+        
+        filter_layout.addWidget(QLabel("To:"))
+        self.end_date = QDateEdit()
+        self.end_date.setCalendarPopup(True)
+        self.end_date.setDate(QDate.currentDate().addDays(1))
+        self.end_date.dateChanged.connect(self.filter_bills)
+        filter_layout.addWidget(self.end_date)
+        
+        layout.addLayout(filter_layout)
+        
         # Table
         self.table = QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(["Date", "Bill No.", "Supplier", "Amount", "Status"])
@@ -346,9 +371,34 @@ class SupplierBillsScreen(QWidget):
         layout.addWidget(self.table)
 
     def load_data(self):
-        bills = get_all_supplier_bills()
+        self.bills = get_all_supplier_bills()
+        self.filter_bills()
+
+    def filter_bills(self):
+        search_txt = self.search_input.text().strip().lower()
+        start = self.start_date.date()
+        end = self.end_date.date()
+        
         self.table.setRowCount(0)
-        for row, bill in enumerate(bills):
+        
+        for bill in self.bills:
+            # Check Date
+            try:
+                b_date = QDate.fromString(bill['bill_date'].split(' ')[0], "yyyy-MM-dd")
+            except:
+                b_date = QDate.currentDate()
+                
+            if b_date < start or b_date > end:
+                continue
+                
+            # Check Search Text
+            bill_num = bill['bill_number'].lower()
+            sup_name = (bill['supplier_name'] or "").lower()
+            
+            if search_txt and (search_txt not in bill_num and search_txt not in sup_name):
+                continue
+                
+            row = self.table.rowCount()
             self.table.insertRow(row)
             self.table.setItem(row, 0, QTableWidgetItem(bill['bill_date'].split(' ')[0]))
             self.table.setItem(row, 1, QTableWidgetItem(bill['bill_number']))
@@ -366,7 +416,6 @@ class SupplierBillsScreen(QWidget):
             
         try:
             extracted = extract_supplier_bill(path)
-            # Extracted might be empty, but we show dialog anyway
             dialog = SupplierReviewDialog(self, extracted)
             if dialog.exec():
                 self.load_data()

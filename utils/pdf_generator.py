@@ -12,6 +12,7 @@ def generate_customer_invoice_pdf(bill_data, items_data, output_path):
     shop_address = get_setting('shop_address', 'Pallipadan Building, Karukutty P O\nKarayamparambu, Angamaly')
     shop_gstin = get_setting('shop_gstin', '32AAFFL4488E1ZD')
     shop_state = get_setting('shop_state', 'Kerala, Code: 32')
+    shop_logo_path = get_setting('shop_logo_path', '')
     
     bank_name = get_setting('bank_name', 'State Bank of India')
     bank_ac_no = get_setting('bank_ac_no', '12345678901')
@@ -49,30 +50,42 @@ def generate_customer_invoice_pdf(bill_data, items_data, output_path):
     c.line(mid_x, top_y, mid_x, header_bottom)
     
     # Seller Info (Left)
+    draw_logo = False
+    text_x_offset = 5
+    if shop_logo_path and os.path.exists(shop_logo_path):
+        draw_logo = True
+        
+    if draw_logo:
+        try:
+            c.drawImage(shop_logo_path, left_x + 5, top_y - 50, width=60, height=45, preserveAspectRatio=True, mask='auto')
+            text_x_offset = 70
+        except Exception as e:
+            print(f"Failed to draw logo on PDF: {e}")
+            
     c.setFont(FONT_BOLD, 12)
-    c.drawString(left_x + 5, top_y - 15, shop_name)
+    c.drawString(left_x + text_x_offset, top_y - 15, shop_name)
     
     curr_y = top_y - 28
     addr_lines = [line.strip() for line in shop_address.split('\n') if line.strip()]
     c.setFont(FONT_NORMAL, 8)
     for line in addr_lines[:2]:
-        c.drawString(left_x + 5, curr_y, line)
+        c.drawString(left_x + text_x_offset, curr_y, line)
         curr_y -= 11
         
     contact_info = []
     if shop_phone: contact_info.append(f"Ph: {shop_phone}")
     if shop_email: contact_info.append(f"Email: {shop_email}")
     if contact_info:
-        c.drawString(left_x + 5, curr_y, " / ".join(contact_info))
+        c.drawString(left_x + text_x_offset, curr_y, " / ".join(contact_info))
         curr_y -= 11
         
     if shop_state:
-        c.drawString(left_x + 5, curr_y, f"State: {shop_state}")
+        c.drawString(left_x + text_x_offset, curr_y, f"State: {shop_state}")
         curr_y -= 11
         
     if shop_gstin:
         c.setFont(FONT_BOLD, 8)
-        c.drawString(left_x + 5, curr_y, f"GSTIN/UIN: {shop_gstin}")
+        c.drawString(left_x + text_x_offset, curr_y, f"GSTIN/UIN: {shop_gstin}")
     
     # Invoice Info (Right)
     c.setFont(FONT_BOLD, 9)
