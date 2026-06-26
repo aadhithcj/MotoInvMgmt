@@ -40,12 +40,12 @@ class MainWindow(QMainWindow):
         self.sidebar.setObjectName("Sidebar")
         self.sidebar.setFixedWidth(220)
         sidebar_layout = QVBoxLayout(self.sidebar)
-        sidebar_layout.setContentsMargins(0, 20, 0, 20)
+        sidebar_layout.setContentsMargins(0, 0, 0, 20)
         sidebar_layout.setSpacing(5)
 
         # Brand Label
         brand_label = QLabel("GEARFIELD")
-        brand_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #F97316; padding-left: 20px; padding-bottom: 20px;")
+        brand_label.setStyleSheet("font-size: 20px; font-weight: bold; color: #F97316; padding-top: 20px; padding-left: 20px; padding-bottom: 20px;")
         sidebar_layout.addWidget(brand_label)
 
         # Navigation Buttons
