@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QMessageBox, QFileDialog, QDialog, QFormLayout, QLineEdit, 
-                             QDateEdit, QComboBox, QDoubleSpinBox, QAbstractItemView)
+                             QDateEdit, QComboBox, QDoubleSpinBox, QAbstractItemView, QMenu)
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor
 
@@ -57,6 +57,8 @@ class SupplierReviewDialog(QDialog):
         self.table.setHorizontalHeaderLabels(["Part Number", "Part Name", "Matched Part", "Action", "Quantity", "Unit Price", "New Part Data"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.table.setColumnWidth(4, 80)
+        self.table.setColumnWidth(5, 100)
         self.table.setColumnHidden(6, True) # Hidden column to store pending new part data
         layout.addWidget(self.table)
         
@@ -159,29 +161,40 @@ class SupplierReviewDialog(QDialog):
 
     def handle_row_action(self, row):
         combo = self.table.cellWidget(row, 2)
+        btn = self.table.cellWidget(row, 3)
+        menu = QMenu(self)
+        
         if combo.currentData() is None:
-            # It's unmatched, allow create
-            reply = QMessageBox.question(self, "Row Action", 
-                                         "Do you want to Create a New Part or Remove this row?",
-                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel)
-            if reply == QMessageBox.StandardButton.Yes: # Create
+            create_action = menu.addAction("✨ Create New Part")
+            menu.addSeparator()
+            remove_action = menu.addAction("🗑️ Remove Row")
+            
+            action = menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
+            if action == create_action:
                 self.create_new_part_for_row(row)
-            elif reply == QMessageBox.StandardButton.Discard: # Remove
+            elif action == remove_action:
                 self.table.removeRow(row)
                 self.validate_rows()
         else:
-            # Already matched, allow remove
-            reply = QMessageBox.question(self, "Row Action", "Remove this row?",
-                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            if reply == QMessageBox.StandardButton.Yes:
+            remove_action = menu.addAction("🗑️ Remove Row")
+            action = menu.exec(btn.mapToGlobal(btn.rect().bottomLeft()))
+            if action == remove_action:
                 self.table.removeRow(row)
                 self.validate_rows()
 
     def create_new_part_for_row(self, row):
-        part_no = self.table.item(row, 0).text()
-        part_name = self.table.item(row, 1).text()
+        part_no = self.table.item(row, 0).text().strip()
+        part_name = self.table.item(row, 1).text().strip()
         price = float(self.table.item(row, 5).text())
         
+        if not part_no and part_name:
+            import random
+            prefix = "".join([c for c in part_name if c.isalnum()])[:4].upper()
+            if not prefix:
+                prefix = "PRT"
+            part_no = f"{prefix}-{random.randint(1000, 9999)}"
+            self.table.item(row, 0).setText(part_no)
+            
         initial_data = {
             'part_number': part_no,
             'part_name': part_name,
@@ -238,7 +251,13 @@ class SupplierReviewDialog(QDialog):
     def confirm(self):
         # 1. Ensure supplier exists
         sup_text = self.supplier_combo.currentText().strip()
-        sup_id = self.supplier_combo.currentData()
+        
+        idx = self.supplier_combo.findText(sup_text, Qt.MatchFlag.MatchExactly)
+        if idx >= 0:
+            sup_id = self.supplier_combo.itemData(idx)
+        else:
+            sup_id = None
+        
         
         if not sup_id:
             # Need to create supplier
@@ -328,7 +347,7 @@ class SupplierBillsScreen(QWidget):
         title = QLabel("Supplier Bills")
         title.setStyleSheet("font-size: 24px; font-weight: bold;")
         
-        upload_btn = QPushButton("Upload Bill PDF")
+        upload_btn = QPushButton("Upload Bill (PDF/Image)")
         upload_btn.setProperty("class", "Primary")
         upload_btn.clicked.connect(self.upload_pdf)
         
@@ -411,7 +430,7 @@ class SupplierBillsScreen(QWidget):
             self.table.setItem(row, 4, status_item)
 
     def upload_pdf(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Select Supplier Bill PDF", "", "PDF Files (*.pdf)")
+        path, _ = QFileDialog.getOpenFileName(self, "Select Supplier Bill", "", "Bills (*.pdf *.png *.jpg *.jpeg)")
         if not path:
             return
             

@@ -79,11 +79,6 @@ def init_db():
             )
         ''')
 
-        # Migration: Add status column to customer_bills if it doesn't exist
-        try:
-            cursor.execute("ALTER TABLE customer_bills ADD COLUMN status TEXT DEFAULT 'Paid'")
-        except sqlite3.OperationalError:
-            pass
 
         # Table: customers
         cursor.execute('''
@@ -97,11 +92,6 @@ def init_db():
             )
         ''')
 
-        # Migration: Add customer_id column to customer_bills if it doesn't exist
-        try:
-            cursor.execute("ALTER TABLE customer_bills ADD COLUMN customer_id INTEGER REFERENCES customers(id)")
-        except sqlite3.OperationalError:
-            pass
 
         # Table: supplier_bill_items
         cursor.execute('''
@@ -121,13 +111,21 @@ def init_db():
                 bill_number TEXT NOT NULL,
                 customer_name TEXT,
                 customer_phone TEXT,
+                customer_id INTEGER REFERENCES customers(id),
                 pdf_filename TEXT,
                 total_amount REAL,
                 discount REAL DEFAULT 0,
                 bill_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                notes TEXT
+                notes TEXT,
+                status TEXT DEFAULT 'Paid'
             )
         ''')
+        
+        # Migrations for existing DBs
+        try: cursor.execute("ALTER TABLE customer_bills ADD COLUMN status TEXT DEFAULT 'Paid'")
+        except: pass
+        try: cursor.execute("ALTER TABLE customer_bills ADD COLUMN customer_id INTEGER REFERENCES customers(id)")
+        except: pass
 
         # Table: customer_bill_items
         cursor.execute('''

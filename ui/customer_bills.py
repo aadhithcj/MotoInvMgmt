@@ -245,10 +245,26 @@ class CustomerReviewDialog(QDialog):
                 'unit_price': price
             })
             
+        cust_name = self.cust_name_input.text().strip()
+        cust_phone = self.cust_phone_input.text().strip()
+        
+        customer_id = None
+        if cust_name and cust_name.lower() != "guest":
+            existing = next((c for c in self.all_customers if c['name'].lower() == cust_name.lower()), None)
+            if existing:
+                customer_id = existing['id']
+            else:
+                try:
+                    from database.models import add_customer
+                    customer_id = add_customer({'name': cust_name, 'phone': cust_phone})
+                except Exception as e:
+                    print(f"Auto-create customer failed: {e}")
+
         bill_data = {
             'bill_number': self.bill_no_input.text().strip(),
-            'customer_name': self.cust_name_input.text().strip(),
-            'customer_phone': self.cust_phone_input.text().strip(),
+            'customer_name': cust_name,
+            'customer_phone': cust_phone,
+            'customer_id': customer_id,
             'discount': self.discount_input.value(),
             'total_amount': self.total_input.value(),
             'bill_date': self.date_input.date().toString("yyyy-MM-dd")
@@ -294,7 +310,7 @@ class CustomerBillsScreen(QWidget):
         create_btn.setProperty("class", "Primary")
         create_btn.clicked.connect(self.create_bill)
 
-        upload_btn = QPushButton("Upload Bill PDF")
+        upload_btn = QPushButton("Upload Bill (PDF/Image)")
         upload_btn.setProperty("class", "Secondary")
         upload_btn.clicked.connect(self.upload_pdf)
         
@@ -419,7 +435,7 @@ class CustomerBillsScreen(QWidget):
             QMessageBox.critical(self, "Error", f"Could not void bill: {str(e)}")
 
     def upload_pdf(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Select Customer Bill PDF", "", "PDF Files (*.pdf)")
+        path, _ = QFileDialog.getOpenFileName(self, "Select Customer Bill", "", "Bills (*.pdf *.png *.jpg *.jpeg)")
         if not path:
             return
             
@@ -458,7 +474,7 @@ class CreateBillDialog(QDialog):
         
         self.cust_combo = QComboBox()
         self.cust_combo.setEditable(True)
-        self.cust_combo.addItem("-- Guest / New Customer --", None)
+        self.cust_combo.addItem("", None)
         for c in self.all_customers:
             self.cust_combo.addItem(f"{c['name']} - {c['phone']}", c)
             
@@ -491,11 +507,11 @@ class CreateBillDialog(QDialog):
         self.table = QTableWidget(0, 6)
         self.table.setHorizontalHeaderLabels(["Part Name", "Quantity", "Unit Price", "Amount", "Available Stock", "Action"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.table.setColumnWidth(1, 80)
         layout.addWidget(self.table)
         
         add_btn = QPushButton("Add Item")
         add_btn.clicked.connect(self.add_empty_row)
-        layout.addWidget(add_btn, alignment=Qt.AlignmentFlag.AlignLeft)
         
         # --- Footer Section ---
         btn_layout = QHBoxLayout()
@@ -506,6 +522,7 @@ class CreateBillDialog(QDialog):
         self.save_btn.setProperty("class", "Primary")
         self.save_btn.clicked.connect(self.save_bill)
         
+        btn_layout.addWidget(add_btn)
         btn_layout.addStretch()
         btn_layout.addWidget(cancel_btn)
         btn_layout.addWidget(self.save_btn)
@@ -642,16 +659,29 @@ class CreateBillDialog(QDialog):
             
         bill_number = get_next_customer_bill_number()
         
-        cust_data = self.cust_combo.currentData()
+        cust_text = self.cust_combo.currentText().strip()
+        idx = self.cust_combo.findText(cust_text, Qt.MatchFlag.MatchExactly)
+        if idx >= 0:
+            cust_data = self.cust_combo.itemData(idx)
+        else:
+            cust_data = None
+            
         customer_id = cust_data['id'] if cust_data else None
         
-        # If user typed a new name instead of selecting
-        customer_name = self.cust_combo.currentText()
-        if cust_data and self.cust_combo.currentText() == f"{cust_data['name']} - {cust_data['phone']}":
+        customer_name = cust_text
+        if cust_data and cust_text == f"{cust_data['name']} - {cust_data['phone']}":
             customer_name = cust_data['name']
             
-        if customer_name == "-- Guest / New Customer --":
+        if customer_name == "-- Guest / New Customer --" or not customer_name:
             customer_name = "Guest"
+            customer_id = None
+            
+        if not customer_id and customer_name != "Guest":
+            try:
+                from database.models import add_customer
+                customer_id = add_customer({'name': customer_name, 'phone': self.cust_phone_input.text().strip()})
+            except Exception as e:
+                print(f"Auto-create customer failed: {e}")
         
         bill_data = {
             'bill_number': bill_number,

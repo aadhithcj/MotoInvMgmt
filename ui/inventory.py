@@ -54,6 +54,8 @@ class PartDialog(QDialog):
         btn_layout = QHBoxLayout()
         save_btn = QPushButton("Save")
         save_btn.setProperty("class", "Primary")
+        save_btn.setDefault(True)
+        save_btn.setAutoDefault(True)
         save_btn.clicked.connect(self.accept)
         cancel_btn = QPushButton("Cancel")
         cancel_btn.clicked.connect(self.reject)

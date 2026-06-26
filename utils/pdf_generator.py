@@ -224,7 +224,7 @@ def generate_customer_invoice_pdf(bill_data, items_data, output_path):
     # Bank Details & Signatory
     bank_top = amount_words_top - 30
     c.line(left_x, bank_top, right_x, bank_top)
-    c.line(mid_x, bank_top, mid_x, bottom_y)
+    c.line(right_x - 150, bank_top, right_x - 150, bottom_y)
     
     c.setFont(FONT_NORMAL, 8)
     c.drawString(left_x + 5, bank_top - 12, "Company's Bank Details")

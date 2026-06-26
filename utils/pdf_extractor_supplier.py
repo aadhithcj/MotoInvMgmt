@@ -1,15 +1,103 @@
 import pdfplumber
 import re
+import os
+import json
 from .helpers import clean_number, clean_quantity, parse_date
+from database.models import get_setting
 
-def extract_supplier_bill(pdf_path):
+def extract_supplier_bill(file_path):
     """
-    Extracts data from a flexible-format supplier bill PDF.
+    Extracts data from a flexible-format supplier bill PDF or Image.
     Returns: {
         'header': {'bill_number': '', 'date': '', 'supplier_name': '', 'total_amount': 0},
         'items': [{'part_number': '', 'part_name': '', 'quantity': 0, 'unit_price': 0, 'total': 0}, ...]
     }
     """
+    ext = os.path.splitext(file_path)[1].lower()
+    
+    if ext == '.pdf':
+        return _extract_pdf(file_path)
+    else:
+        return _extract_image_ai(file_path)
+
+def _extract_image_ai(file_path):
+    api_key = get_setting('gemini_api_key', '')
+    if not api_key:
+        raise ValueError("Google Gemini API Key is missing. Please paste your free key in the Settings tab.")
+        
+    from google import genai
+    from google.genai import types
+    import PIL.Image
+    
+    client = genai.Client(api_key=api_key)
+    
+    prompt = """
+    Analyze this supplier bill/invoice.
+    Extract the details into this exact JSON structure:
+    {
+      "header": {
+        "bill_number": "string",
+        "date": "string (YYYY-MM-DD)",
+        "supplier_name": "string",
+        "total_amount": 0.0
+      },
+      "items": [
+        {
+          "part_number": "string",
+          "part_name": "string",
+          "quantity": 0,
+          "unit_price": 0.0,
+          "total": 0.0
+        }
+      ]
+    }
+    Ensure all amounts are standard floats, and quantities are integers.
+    """
+    
+    try:
+        img = PIL.Image.open(file_path)
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=[prompt, img],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            )
+        )
+        data = json.loads(response.text)
+        
+        # Guarantee structure matches our UI
+        header = data.get('header', {})
+        items = data.get('items', [])
+        
+        final_header = {
+            'bill_number': str(header.get('bill_number') or ''),
+            'date': str(header.get('date') or ''),
+            'supplier_name': str(header.get('supplier_name') or ''),
+            'total_amount': float(header.get('total_amount') or 0.0)
+        }
+        
+        final_items = []
+        for i in items:
+            p_name = str(i.get('part_name') or '')
+            p_num = str(i.get('part_number') or '')
+            if not p_name and p_num: p_name = p_num
+            if not p_name: continue
+            
+            final_items.append({
+                'part_number': p_num,
+                'part_name': p_name,
+                'quantity': int(i.get('quantity') or 0),
+                'unit_price': float(i.get('unit_price') or 0.0),
+                'total': float(i.get('total') or 0.0)
+            })
+            
+        return {'header': final_header, 'items': final_items}
+        
+    except Exception as e:
+        raise ValueError(f"AI Extraction failed: {str(e)}")
+
+def _extract_pdf(pdf_path):
     header_data = {
         'bill_number': '', 'date': '', 'supplier_name': '', 'total_amount': 0.0
     }

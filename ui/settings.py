@@ -47,9 +47,14 @@ class SettingsScreen(QWidget):
         self.shop_logo_path.setReadOnly(True)
         self.choose_logo_btn = QPushButton("Choose Logo")
         self.choose_logo_btn.clicked.connect(self.choose_logo)
+        self.remove_logo_btn = QPushButton("Remove Logo")
+        self.remove_logo_btn.setStyleSheet("background-color: #EF4444; color: white;")
+        self.remove_logo_btn.clicked.connect(self.remove_logo)
+        
         logo_layout = QHBoxLayout()
         logo_layout.addWidget(self.shop_logo_path)
         logo_layout.addWidget(self.choose_logo_btn)
+        logo_layout.addWidget(self.remove_logo_btn)
         
         shop_layout.addRow("Shop Name:", self.shop_name)
         shop_layout.addRow("Phone Number:", self.shop_phone)
@@ -77,21 +82,18 @@ class SettingsScreen(QWidget):
         bank_group.setLayout(bank_layout)
         scroll_layout.addWidget(bank_group)
         
-        # Customer Bill Column Mapping Group
-        mapping_group = QGroupBox("Customer Bill Column Mapping (JSON Format)")
-        mapping_layout = QVBoxLayout()
+
+        # AI Integration Group
+        ai_group = QGroupBox("AI Integration")
+        ai_layout = QFormLayout()
         
-        mapping_desc = QLabel("Edit keywords used to identify columns in Customer Bills. \nFormat: {\"column_type\": [\"keyword1\", \"keyword2\"]}")
-        mapping_desc.setStyleSheet("color: #94A3B8;")
-        mapping_layout.addWidget(mapping_desc)
+        self.gemini_api_key = QLineEdit()
+        self.gemini_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self.gemini_api_key.setPlaceholderText("Paste your free Gemini API Key here")
         
-        self.mapping_editor = QTextEdit()
-        self.mapping_editor.setStyleSheet("font-family: Consolas, monospace;")
-        self.mapping_editor.setFixedHeight(120)
-        mapping_layout.addWidget(self.mapping_editor)
-        
-        mapping_group.setLayout(mapping_layout)
-        scroll_layout.addWidget(mapping_group)
+        ai_layout.addRow("Gemini API Key:", self.gemini_api_key)
+        ai_group.setLayout(ai_layout)
+        scroll_layout.addWidget(ai_group)
         
         # Database Backup & Restore Group
         db_group = QGroupBox("Database Backup & Restore")
@@ -137,15 +139,7 @@ class SettingsScreen(QWidget):
         self.bank_branch.setText(get_setting('bank_branch', ''))
         self.bank_ifsc.setText(get_setting('bank_ifsc', ''))
         
-        default_mapping = '{\n  "part_number": ["part no", "part number", "code", "item code"],\n  "part_name": ["description", "item", "name", "part name"],\n  "quantity": ["qty", "quantity", "units"],\n  "unit_price": ["price", "unit price", "rate"],\n  "total": ["total", "amount", "line total"]\n}'
-        mapping_val = get_setting('customer_bill_mapping', default_mapping)
-        
-        try:
-            parsed = json.loads(mapping_val)
-            formatted = json.dumps(parsed, indent=4)
-            self.mapping_editor.setPlainText(formatted)
-        except:
-            self.mapping_editor.setPlainText(mapping_val)
+        self.gemini_api_key.setText(get_setting('gemini_api_key', ''))
             
     def save_settings(self):
         set_setting('shop_name', self.shop_name.text().strip())
@@ -161,20 +155,17 @@ class SettingsScreen(QWidget):
         set_setting('bank_branch', self.bank_branch.text().strip())
         set_setting('bank_ifsc', self.bank_ifsc.text().strip())
         
-        # Validate JSON mapping
-        mapping_text = self.mapping_editor.toPlainText().strip()
-        try:
-            json.loads(mapping_text) # test parse
-            set_setting('customer_bill_mapping', mapping_text)
-            ToastNotification.show_toast(self.window(), "Settings saved successfully.")
-        except json.JSONDecodeError as e:
-            QMessageBox.warning(self, "Invalid JSON", f"Could not save Column Mapping. Invalid JSON format:\n{str(e)}")
+        set_setting('gemini_api_key', self.gemini_api_key.text().strip())
+        ToastNotification.show_toast(self.window(), "Settings saved successfully.")
 
     def choose_logo(self):
         path, _ = QFileDialog.getOpenFileName(self, "Select Shop Logo", "", "Image Files (*.png *.jpg *.jpeg)")
         if path:
             self.shop_logo_path.setText(path)
             
+    def remove_logo(self):
+        self.shop_logo_path.setText("")
+        
     def backup_database(self):
         default_name = "gearfield_backup.db"
         path, _ = QFileDialog.getSaveFileName(self, "Backup Database", default_name, "Database Files (*.db)")

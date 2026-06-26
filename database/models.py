@@ -154,7 +154,22 @@ def save_supplier_bill(bill_data, items_data, new_parts_data=None):
     try:
         # 1. Create new parts if any
         if new_parts_data:
+            created_parts = {}
             for part in new_parts_data:
+                p_num = part.get('part_number')
+                
+                if p_num and p_num in created_parts:
+                    part['id'] = created_parts[p_num]
+                    continue
+                    
+                if p_num:
+                    cursor.execute("SELECT id FROM parts WHERE part_number=?", (p_num,))
+                    existing = cursor.fetchone()
+                    if existing:
+                        part['id'] = existing[0]
+                        created_parts[p_num] = existing[0]
+                        continue
+
                 cursor.execute("""
                     INSERT INTO parts (part_name, part_number, category, location, min_quantity, purchase_price, selling_price, quantity)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 0)
@@ -164,6 +179,8 @@ def save_supplier_bill(bill_data, items_data, new_parts_data=None):
                     part.get('purchase_price', 0), part.get('selling_price', 0)
                 ))
                 part['id'] = cursor.lastrowid # Assign new ID back
+                if p_num:
+                    created_parts[p_num] = part['id']
 
         # 2. Insert Bill
         cursor.execute("""
