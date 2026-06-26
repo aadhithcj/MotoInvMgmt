@@ -593,7 +593,10 @@ class CreateBillDialog(QDialog):
             self.table.item(row, 2).setText(str(part['selling_price']))
             self.table.item(row, 4).setText(str(part['quantity']))
             qty_spin = self.table.cellWidget(row, 1)
-            qty_spin.setMaximum(part['quantity']) # Restrict to available stock
+            if part['quantity'] <= 0:
+                qty_spin.setRange(0, 0)
+            else:
+                qty_spin.setRange(1, part['quantity'])
             self.update_totals()
 
     def remove_row(self, row):

@@ -69,9 +69,10 @@ QSpinBox, QDoubleSpinBox {
     background-color: #1E293B;
     color: #E2E8F0;
     border: 1px solid #475569;
-    padding: 6px 30px 6px 10px;
+    padding: 2px 20px 2px 5px;
     border-radius: 4px;
-    min-height: 20px;
+    min-height: 24px;
+    qproperty-alignment: AlignCenter;
 }
 QSpinBox:focus, QDoubleSpinBox:focus {
     border: 1px solid #F97316;
@@ -79,8 +80,8 @@ QSpinBox:focus, QDoubleSpinBox:focus {
 QSpinBox::up-button, QDoubleSpinBox::up-button {
     subcontrol-origin: border;
     subcontrol-position: top right;
-    width: 26px;
-    height: 16px;
+    width: 16px;
+    height: 12px;
     border-left: 1px solid #475569;
     border-bottom: 1px solid #475569;
     background-color: #334155;
@@ -97,9 +98,10 @@ QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
 QSpinBox::down-button, QDoubleSpinBox::down-button {
     subcontrol-origin: border;
     subcontrol-position: bottom right;
-    width: 26px;
-    height: 16px;
+    width: 16px;
+    height: 12px;
     border-left: 1px solid #475569;
+    border-top: 1px solid #475569;
     background-color: #334155;
     border-bottom-right-radius: 4px;
 }
