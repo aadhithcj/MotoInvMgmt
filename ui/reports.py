@@ -6,6 +6,7 @@ from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtGui import QColor
 from database.models import execute_query
 from utils.helpers import format_currency
+from .toast import ToastNotification
 
 class ReportsScreen(QWidget):
     def __init__(self):
@@ -254,7 +255,7 @@ class ReportsScreen(QWidget):
                         row_data.append(item.text() if item else "")
                     writer.writerow(row_data)
                     
-            QMessageBox.information(self, "Success", "Export completed successfully.")
+            ToastNotification.show_toast(self.window(), "Export completed successfully.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not save file:\n{str(e)}")
 

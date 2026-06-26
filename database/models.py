@@ -106,6 +106,33 @@ def delete_supplier(supplier_id):
         raise ValueError("Cannot delete supplier: They have existing bills.")
     execute_query("DELETE FROM suppliers WHERE id=?", (supplier_id,), commit=True)
 
+# --- Customers ---
+
+def get_all_customers():
+    return execute_query("SELECT * FROM customers ORDER BY name ASC", fetchall=True)
+
+def get_customer_by_name(name):
+    return execute_query("SELECT * FROM customers WHERE name = ? COLLATE NOCASE", (name,), fetchone=True)
+
+def search_customers(query):
+    like_query = f"%{query}%"
+    return execute_query("SELECT * FROM customers WHERE name LIKE ? OR phone LIKE ? ORDER BY name ASC", 
+                         (like_query, like_query), fetchall=True)
+
+def add_customer(data):
+    return execute_query("INSERT INTO customers (name, phone, email, address) VALUES (?, ?, ?, ?)", 
+                         (data['name'], data.get('phone', ''), data.get('email', ''), data.get('address', '')), commit=True)
+
+def update_customer(customer_id, data):
+    execute_query("UPDATE customers SET name=?, phone=?, email=?, address=? WHERE id=?", 
+                  (data['name'], data.get('phone', ''), data.get('email', ''), data.get('address', ''), customer_id), commit=True)
+
+def delete_customer(customer_id):
+    bills = execute_query("SELECT count(*) as c FROM customer_bills WHERE customer_id=?", (customer_id,), fetchone=True)
+    if bills['c'] > 0:
+        raise ValueError("Cannot delete customer: They have existing bills.")
+    execute_query("DELETE FROM customers WHERE id=?", (customer_id,), commit=True)
+
 # --- Settings ---
 
 def get_setting(key, default=None):
@@ -203,13 +230,13 @@ def save_customer_bill(bill_data, items_data):
 
         # 2. Insert Bill
         cursor.execute("""
-            INSERT INTO customer_bills (bill_number, customer_name, customer_phone, pdf_filename, total_amount, discount, bill_date, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO customer_bills (bill_number, customer_name, customer_phone, customer_id, pdf_filename, total_amount, discount, bill_date, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             bill_data['bill_number'], bill_data.get('customer_name', ''), 
-            bill_data.get('customer_phone', ''), bill_data.get('pdf_filename', ''), 
-            bill_data.get('total_amount', 0), bill_data.get('discount', 0),
-            bill_data.get('bill_date'), bill_data.get('notes', '')
+            bill_data.get('customer_phone', ''), bill_data.get('customer_id'),
+            bill_data.get('pdf_filename', ''), bill_data.get('total_amount', 0),
+            bill_data.get('discount', 0), bill_data.get('bill_date'), bill_data.get('notes', '')
         ))
         bill_id = cursor.lastrowid
 
@@ -256,18 +283,24 @@ def get_dashboard_stats():
 def get_low_stock_parts():
     return execute_query("SELECT * FROM parts WHERE quantity <= min_quantity ORDER BY quantity ASC", fetchall=True)
 
-def get_recent_bills(limit=5):
-    # Union of both bill types for recent feed
+def get_recent_bills(limit=10):
     query = """
-        SELECT id, bill_number, 'Supplier' as type, total_amount, bill_date 
-        FROM supplier_bills
+        SELECT id, bill_number, total_amount, bill_date, 'Supplier' as type FROM supplier_bills
         UNION ALL
-        SELECT id, bill_number, 'Customer' as type, total_amount, bill_date 
-        FROM customer_bills
-        ORDER BY bill_date DESC
-        LIMIT ?
+        SELECT id, bill_number, total_amount, bill_date, 'Customer' as type FROM customer_bills
+        ORDER BY bill_date DESC LIMIT ?
     """
     return execute_query(query, (limit,), fetchall=True)
+
+def get_sales_over_time(days=30):
+    query = """
+        SELECT date(bill_date) as bdate, SUM(total_amount) as total
+        FROM customer_bills
+        WHERE status != 'Voided' AND bill_date >= date('now', ?)
+        GROUP BY date(bill_date)
+        ORDER BY date(bill_date) ASC
+    """
+    return execute_query(query, (f"-{days} days",), fetchall=True)
 
 def get_all_supplier_bills():
     query = """

@@ -1,7 +1,11 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QTableWidget, QTableWidgetItem, QHeaderView, QSizePolicy
 from PyQt6.QtCore import Qt
-from database.models import get_dashboard_stats, get_low_stock_parts, get_recent_bills
+from database.models import get_dashboard_stats, get_low_stock_parts, get_recent_bills, get_sales_over_time
 from utils.helpers import format_currency
+import matplotlib
+matplotlib.use('QtAgg')
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
 
 class StatCard(QFrame):
     def __init__(self, title, value, color="#F97316"):
@@ -50,6 +54,19 @@ class DashboardScreen(QWidget):
         stats_layout.addWidget(self.card_bills)
         layout.addLayout(stats_layout)
         
+        # Chart Layout
+        self.chart_frame = QFrame()
+        self.chart_frame.setObjectName("StatCard") # Reuse styling
+        chart_layout = QVBoxLayout(self.chart_frame)
+        self.figure = Figure(figsize=(8, 3), dpi=100)
+        self.figure.patch.set_facecolor('none') # Transparent background
+        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.ax = self.figure.add_subplot(111)
+        self.ax.set_facecolor('none')
+        chart_layout.addWidget(self.canvas)
+        layout.addWidget(self.chart_frame)
+        
         # Tables Layout
         tables_layout = QHBoxLayout()
         
@@ -87,6 +104,42 @@ class DashboardScreen(QWidget):
         self.card_value.update_value(format_currency(stats.get('total_value', 0)))
         self.card_low.update_value(stats.get('low_stock', 0))
         self.card_bills.update_value(stats.get('bills_today', 0))
+        
+        # Update Chart
+        sales_data = get_sales_over_time(30)
+        self.ax.clear()
+        
+        # Theme colors for chart
+        is_dark = self.palette().window().color().lightness() < 128
+        text_color = '#E2E8F0' if is_dark else '#0F172A'
+        grid_color = '#334155' if is_dark else '#E2E8F0'
+        line_color = '#F97316'
+        
+        if sales_data:
+            dates = [row['bdate'][-5:] for row in sales_data] # Just show MM-DD
+            totals = [row['total'] for row in sales_data]
+            
+            self.ax.plot(dates, totals, marker='o', color=line_color, linewidth=2, markersize=6)
+            self.ax.fill_between(dates, totals, color=line_color, alpha=0.1)
+            
+            self.ax.set_title("Sales Over Last 30 Days", color=text_color, pad=10)
+            self.ax.tick_params(axis='x', colors=text_color, rotation=45)
+            self.ax.tick_params(axis='y', colors=text_color)
+            
+            # Formatting
+            self.ax.spines['bottom'].set_color(grid_color)
+            self.ax.spines['top'].set_visible(False) 
+            self.ax.spines['right'].set_visible(False)
+            self.ax.spines['left'].set_color(grid_color)
+            self.ax.grid(True, linestyle='--', alpha=0.5, color=grid_color)
+            
+            self.figure.tight_layout()
+        else:
+            self.ax.text(0.5, 0.5, "No sales data in the last 30 days", 
+                        ha='center', va='center', color=text_color)
+            self.ax.axis('off')
+            
+        self.canvas.draw()
         
         # Low Stock
         low_stock = get_low_stock_parts()

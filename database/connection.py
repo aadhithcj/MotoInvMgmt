@@ -85,6 +85,24 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
+        # Table: customers
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS customers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                phone TEXT,
+                email TEXT,
+                address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+
+        # Migration: Add customer_id column to customer_bills if it doesn't exist
+        try:
+            cursor.execute("ALTER TABLE customer_bills ADD COLUMN customer_id INTEGER REFERENCES customers(id)")
+        except sqlite3.OperationalError:
+            pass
+
         # Table: supplier_bill_items
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS supplier_bill_items (

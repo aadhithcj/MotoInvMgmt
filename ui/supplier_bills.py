@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor
 
+from .toast import ToastNotification
 from database.models import (get_all_supplier_bills, get_all_parts, get_supplier_by_name, 
                              add_supplier, save_supplier_bill, get_all_suppliers)
 from utils.pdf_extractor_supplier import extract_supplier_bill
@@ -307,7 +308,7 @@ class SupplierReviewDialog(QDialog):
         try:
             # We will patch save_supplier_bill to handle the item['part_id'] being a dict ref
             save_supplier_bill(bill_data, items_data, new_parts_data)
-            QMessageBox.information(self, "Success", "Bill saved and stock updated successfully.")
+            ToastNotification.show_toast(self.window(), "Bill saved and stock updated successfully.")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Database Error", str(e))

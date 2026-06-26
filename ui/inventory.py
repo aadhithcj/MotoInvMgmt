@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
-                             QLineEdit, QDialog, QFormLayout, QSpinBox, QDoubleSpinBox, QMessageBox)
+                             QLineEdit, QDialog, QFormLayout, QSpinBox, QDoubleSpinBox, QMessageBox, QFileDialog)
 from PyQt6.QtCore import Qt
+from .toast import ToastNotification
 from database.models import get_all_parts, search_parts, add_part, update_part, delete_part
 from utils.helpers import format_currency
 
@@ -98,9 +99,17 @@ class InventoryScreen(QWidget):
         add_btn.setProperty("class", "Primary")
         add_btn.clicked.connect(self.add_part)
         
+        export_btn = QPushButton("Export CSV")
+        export_btn.clicked.connect(self.export_csv)
+        
+        import_btn = QPushButton("Import CSV")
+        import_btn.clicked.connect(self.import_csv)
+        
         header_layout.addWidget(title)
         header_layout.addStretch()
         header_layout.addWidget(self.search_input)
+        header_layout.addWidget(export_btn)
+        header_layout.addWidget(import_btn)
         header_layout.addWidget(add_btn)
         layout.addLayout(header_layout)
         
@@ -161,6 +170,55 @@ class InventoryScreen(QWidget):
             return None
         row = selected_rows[0].row()
         return int(self.table.item(row, 0).text())
+
+    def export_csv(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Export Inventory", "inventory.csv", "CSV Files (*.csv)")
+        if not path: return
+        try:
+            import csv
+            parts = get_all_parts()
+            with open(path, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(["Part Number", "Part Name", "Category", "Location", "Quantity", "Min Quantity", "Purchase Price", "Selling Price"])
+                for p in parts:
+                    writer.writerow([
+                        p['part_number'], p['part_name'], p['category'], p['location'],
+                        p['quantity'], p['min_quantity'], p['purchase_price'], p['selling_price']
+                    ])
+            ToastNotification.show_toast(self.window(), "Inventory exported successfully.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not export:\n{str(e)}")
+
+    def import_csv(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Import Inventory", "", "CSV Files (*.csv)")
+        if not path: return
+        try:
+            import csv
+            from database.models import execute_query
+            with open(path, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                imported = 0
+                for row in reader:
+                    part_num = row.get('Part Number', '').strip()
+                    part_name = row.get('Part Name', '').strip()
+                    if part_num and part_name:
+                        try:
+                            qty = int(row.get('Quantity', 0) or 0)
+                            execute_query("""
+                                INSERT INTO parts (part_number, part_name, category, location, quantity, min_quantity, purchase_price, selling_price)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                part_num, part_name,
+                                row.get('Category', '').strip(), row.get('Location', '').strip(),
+                                qty, int(row.get('Min Quantity', 5) or 5),
+                                float(row.get('Purchase Price', 0) or 0), float(row.get('Selling Price', 0) or 0)
+                            ), commit=True)
+                            imported += 1
+                        except: pass
+            self.load_data()
+            ToastNotification.show_toast(self.window(), f"Imported {imported} new parts successfully.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not import:\n{str(e)}")
 
     def add_part(self):
         dialog = PartDialog(self)

@@ -2,12 +2,13 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QMessageBox, QFileDialog, QDialog, QFormLayout, QLineEdit, 
                              QDateEdit, QComboBox, QDoubleSpinBox, QSpinBox, QCompleter, QFrame, QMenu)
+from .toast import ToastNotification
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor, QAction
 import os
 import sys
 
-from database.models import (get_all_customer_bills, get_all_parts, save_customer_bill, get_next_customer_bill_number)
+from database.models import (get_all_customer_bills, get_all_parts, get_all_customers, save_customer_bill, get_next_customer_bill_number)
 from utils.pdf_extractor_customer import extract_customer_bill
 from utils.helpers import format_currency
 from utils.pdf_generator import generate_customer_invoice_pdf
@@ -269,7 +270,7 @@ class CustomerReviewDialog(QDialog):
             if low_stock_warnings:
                 msg += "\n\n⚠️ LOW STOCK WARNING:\n" + "\n".join(low_stock_warnings)
                 
-            QMessageBox.information(self, "Success", msg)
+            ToastNotification.show_toast(self.window(), msg)
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Database Error", str(e))
@@ -412,7 +413,7 @@ class CustomerBillsScreen(QWidget):
         try:
             from database.models import void_customer_bill
             void_customer_bill(bill['id'])
-            QMessageBox.information(self, "Success", "Bill voided successfully and stock returned.")
+            ToastNotification.show_toast(self.window(), "Bill voided successfully and stock returned.")
             self.load_data()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not void bill: {str(e)}")
@@ -441,6 +442,7 @@ class CreateBillDialog(QDialog):
         self.setWindowTitle("Create Customer Bill")
         self.setMinimumSize(1000, 600)
         self.all_parts = get_all_parts()
+        self.all_customers = get_all_customers()
         
         self.setup_ui()
 
@@ -454,8 +456,20 @@ class CreateBillDialog(QDialog):
         self.date_input.setDate(QDate.currentDate())
         self.date_input.setCalendarPopup(True)
         
-        self.cust_name_input = QLineEdit()
+        self.cust_combo = QComboBox()
+        self.cust_combo.setEditable(True)
+        self.cust_combo.addItem("-- Guest / New Customer --", None)
+        for c in self.all_customers:
+            self.cust_combo.addItem(f"{c['name']} - {c['phone']}", c)
+            
+        completer = QCompleter([self.cust_combo.itemText(i) for i in range(self.cust_combo.count())])
+        completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.cust_combo.setCompleter(completer)
+        
         self.cust_phone_input = QLineEdit()
+        
+        self.cust_combo.currentIndexChanged.connect(self.on_customer_selected)
         
         self.discount_input = QDoubleSpinBox()
         self.discount_input.setRange(0, 1000000)
@@ -466,7 +480,7 @@ class CreateBillDialog(QDialog):
         self.total_display.setStyleSheet("font-size: 18px; font-weight: bold; color: #F97316;")
         
         header_group.addRow("Date:", self.date_input)
-        header_group.addRow("Customer Name:", self.cust_name_input)
+        header_group.addRow("Customer:", self.cust_combo)
         header_group.addRow("Customer Phone:", self.cust_phone_input)
         header_group.addRow("Discount:", self.discount_input)
         header_group.addRow("Total Amount:", self.total_display)
@@ -499,6 +513,13 @@ class CreateBillDialog(QDialog):
         layout.addLayout(btn_layout)
         
         self.add_empty_row()
+
+    def on_customer_selected(self):
+        cust_data = self.cust_combo.currentData()
+        if cust_data:
+            self.cust_phone_input.setText(cust_data.get('phone') or "")
+        else:
+            self.cust_phone_input.clear()
 
     def add_empty_row(self):
         row = self.table.rowCount()
@@ -621,10 +642,22 @@ class CreateBillDialog(QDialog):
             
         bill_number = get_next_customer_bill_number()
         
+        cust_data = self.cust_combo.currentData()
+        customer_id = cust_data['id'] if cust_data else None
+        
+        # If user typed a new name instead of selecting
+        customer_name = self.cust_combo.currentText()
+        if cust_data and self.cust_combo.currentText() == f"{cust_data['name']} - {cust_data['phone']}":
+            customer_name = cust_data['name']
+            
+        if customer_name == "-- Guest / New Customer --":
+            customer_name = "Guest"
+        
         bill_data = {
             'bill_number': bill_number,
-            'customer_name': self.cust_name_input.text().strip(),
+            'customer_name': customer_name,
             'customer_phone': self.cust_phone_input.text().strip(),
+            'customer_id': customer_id,
             'discount': self.discount_input.value(),
             'total_amount': float(self.total_display.text()),
             'bill_date': self.date_input.date().toString("yyyy-MM-dd")
@@ -649,7 +682,7 @@ class CreateBillDialog(QDialog):
             generate_customer_invoice_pdf(bill_data, items_data, pdf_path)
             
             msg = f"Bill saved and stock updated successfully.\nPDF Generated at:\n{pdf_path}"
-            QMessageBox.information(self, "Success", msg)
+            ToastNotification.show_toast(self.window(), msg)
             
             # Auto-open PDF
             if os.name == 'nt':

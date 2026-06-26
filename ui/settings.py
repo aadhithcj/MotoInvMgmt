@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QLineEdit, QTextEdit, QFormLayout, 
                              QMessageBox, QGroupBox, QScrollArea, QFileDialog)
 from database.models import get_setting, set_setting
+from .toast import ToastNotification
 
 class SettingsScreen(QWidget):
     def __init__(self):
@@ -165,7 +166,7 @@ class SettingsScreen(QWidget):
         try:
             json.loads(mapping_text) # test parse
             set_setting('customer_bill_mapping', mapping_text)
-            QMessageBox.information(self, "Success", "Settings saved successfully.")
+            ToastNotification.show_toast(self.window(), "Settings saved successfully.")
         except json.JSONDecodeError as e:
             QMessageBox.warning(self, "Invalid JSON", f"Could not save Column Mapping. Invalid JSON format:\n{str(e)}")
 

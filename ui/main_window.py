@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QStackedWidget, QFrame, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QKeySequence, QShortcut
 from database.models import get_setting, set_setting
 
 # Import Screens
@@ -8,6 +9,7 @@ from .inventory import InventoryScreen
 from .supplier_bills import SupplierBillsScreen
 from .customer_bills import CustomerBillsScreen
 from .suppliers import SuppliersScreen
+from .customers import CustomersScreen
 from .reports import ReportsScreen
 from .settings import SettingsScreen
 
@@ -24,6 +26,7 @@ class MainWindow(QMainWindow):
         self.current_theme = get_setting('theme', 'dark')
 
         self.setup_ui()
+        self.setup_shortcuts()
 
     def setup_ui(self):
         main_widget = QWidget()
@@ -53,6 +56,7 @@ class MainWindow(QMainWindow):
             ("Supplier Bills", SupplierBillsScreen),
             ("Customer Bills", CustomerBillsScreen),
             ("Suppliers", SuppliersScreen),
+            ("Customers", CustomersScreen),
             ("Reports", ReportsScreen),
             ("Settings", SettingsScreen),
         ]
@@ -88,6 +92,36 @@ class MainWindow(QMainWindow):
         
         # Initial Screen Load
         self.switch_screen(0, self.nav_buttons["Dashboard"])
+
+    def setup_shortcuts(self):
+        # New Bill (Ctrl+N)
+        shortcut_new = QShortcut(QKeySequence("Ctrl+N"), self)
+        shortcut_new.activated.connect(self.action_new_bill)
+        
+        # Focus Search (Ctrl+F)
+        shortcut_search = QShortcut(QKeySequence("Ctrl+F"), self)
+        shortcut_search.activated.connect(self.action_focus_search)
+        
+        # Reload (F5)
+        shortcut_reload = QShortcut(QKeySequence("F5"), self)
+        shortcut_reload.activated.connect(self.action_reload)
+
+    def action_new_bill(self):
+        # Switch to Customer Bills tab (index 3)
+        self.switch_screen(3, self.nav_buttons["Customer Bills"])
+        widget = self.stacked_widget.currentWidget()
+        if hasattr(widget, 'create_bill'):
+            widget.create_bill()
+
+    def action_focus_search(self):
+        widget = self.stacked_widget.currentWidget()
+        if hasattr(widget, 'search_input'):
+            widget.search_input.setFocus()
+
+    def action_reload(self):
+        widget = self.stacked_widget.currentWidget()
+        if hasattr(widget, 'load_data'):
+            widget.load_data()
 
     def switch_screen(self, index, button):
         # Uncheck all others
