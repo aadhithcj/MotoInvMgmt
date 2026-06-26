@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QMessageBox, QFileDialog, QDialog, QFormLayout, QLineEdit, 
-                             QDateEdit, QComboBox, QDoubleSpinBox, QAbstractItemView, QMenu)
+                             QDateEdit, QComboBox, QDoubleSpinBox, QSpinBox, QAbstractItemView, QMenu)
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor
 
@@ -12,7 +12,49 @@ from utils.pdf_extractor_supplier import extract_supplier_bill
 from utils.helpers import format_currency
 from .inventory import PartDialog
 
-class SupplierReviewDialog(QDialog):
+class BatchSetupDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Batch Setup Parts")
+        self.setMinimumWidth(300)
+        self.setup_ui()
+        
+    def setup_ui(self):
+        layout = QFormLayout(self)
+        
+        self.category_input = QLineEdit()
+        self.location_input = QLineEdit()
+        self.min_qty_input = QSpinBox()
+        self.min_qty_input.setRange(0, 10000)
+        self.min_qty_input.setValue(5)
+        self.min_qty_input.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        
+        layout.addRow("Category:", self.category_input)
+        layout.addRow("Location:", self.location_input)
+        layout.addRow("Min Qty:", self.min_qty_input)
+        
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("Apply Batch")
+        save_btn.setProperty("class", "Primary")
+        save_btn.setDefault(True)
+        save_btn.setAutoDefault(True)
+        save_btn.clicked.connect(self.accept)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        
+        btn_layout.addStretch()
+        btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(save_btn)
+        layout.addRow(btn_layout)
+
+    def get_data(self):
+        return {
+            'category': self.category_input.text().strip(),
+            'location': self.location_input.text().strip(),
+            'min_quantity': self.min_qty_input.value()
+        }
+
+class AddBillDialog(QDialog):
     def __init__(self, parent, extracted_data):
         super().__init__(parent)
         self.setWindowTitle("Review Supplier Bill")
@@ -54,6 +96,8 @@ class SupplierReviewDialog(QDialog):
         
         # --- Items Table ---
         self.table = QTableWidget(0, 7)
+        self.table.verticalHeader().setDefaultSectionSize(40)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setHorizontalHeaderLabels(["Part Number", "Part Name", "Matched Part", "Action", "Quantity", "Unit Price", "New Part Data"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -68,6 +112,9 @@ class SupplierReviewDialog(QDialog):
         add_row_btn = QPushButton("+ Add Row")
         add_row_btn.clicked.connect(self.add_empty_row)
         
+        batch_setup_btn = QPushButton("Batch Setup Selected")
+        batch_setup_btn.clicked.connect(self.batch_setup_parts)
+        
         self.status_lbl = QLabel("Ready")
         
         self.confirm_btn = QPushButton("Confirm & Update Stock")
@@ -78,6 +125,7 @@ class SupplierReviewDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         
         btn_layout.addWidget(add_row_btn)
+        btn_layout.addWidget(batch_setup_btn)
         btn_layout.addStretch()
         btn_layout.addWidget(self.status_lbl)
         btn_layout.addWidget(cancel_btn)
@@ -158,6 +206,55 @@ class SupplierReviewDialog(QDialog):
     def add_empty_row(self):
         self.add_row("", "", 1, 0.0)
         self.validate_rows()
+
+    def batch_setup_parts(self):
+        selected_rows = set(item.row() for item in self.table.selectedItems())
+        if not selected_rows:
+            QMessageBox.warning(self, "Warning", "Please select at least one row.")
+            return
+            
+        dialog = BatchSetupDialog(self)
+        if dialog.exec():
+            batch_data = dialog.get_data()
+            import json
+            import random
+            
+            for row in selected_rows:
+                combo = self.table.cellWidget(row, 2)
+                if combo.currentData() is not None:
+                    continue # Skip if already matched to an existing part
+                    
+                part_no = self.table.item(row, 0).text().strip()
+                part_name = self.table.item(row, 1).text().strip()
+                try:
+                    price = float(self.table.item(row, 5).text())
+                except:
+                    price = 0.0
+                    
+                if not part_name:
+                    continue # Cannot setup part without a name
+                    
+                if not part_no:
+                    prefix = "".join([c for c in part_name if c.isalnum()])[:4].upper()
+                    if not prefix: prefix = "PRT"
+                    part_no = f"{prefix}-{random.randint(1000, 9999)}"
+                    self.table.item(row, 0).setText(part_no)
+                    
+                new_data = {
+                    'part_number': part_no,
+                    'part_name': part_name,
+                    'category': batch_data['category'],
+                    'location': batch_data['location'],
+                    'min_quantity': batch_data['min_quantity'],
+                    'purchase_price': price,
+                    'selling_price': price * 1.2
+                }
+                
+                self.table.item(row, 6).setText(json.dumps(new_data))
+                combo.setItemText(0, f"(NEW) {part_no} - {part_name}")
+                combo.setCurrentIndex(0)
+                
+            self.validate_rows()
 
     def handle_row_action(self, row):
         combo = self.table.cellWidget(row, 2)
@@ -386,6 +483,7 @@ class SupplierBillsScreen(QWidget):
         
         # Table
         self.table = QTableWidget(0, 5)
+        self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.setHorizontalHeaderLabels(["Date", "Bill No.", "Supplier", "Amount", "Status"])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -439,7 +537,7 @@ class SupplierBillsScreen(QWidget):
             
         try:
             extracted = extract_supplier_bill(path)
-            dialog = SupplierReviewDialog(self, extracted)
+            dialog = AddBillDialog(self, extracted)
             if dialog.exec():
                 self.load_data()
         except Exception as e:

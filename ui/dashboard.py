@@ -2,10 +2,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, Q
 from PyQt6.QtCore import Qt
 from database.models import get_dashboard_stats, get_low_stock_parts, get_recent_bills, get_sales_over_time
 from utils.helpers import format_currency
-import matplotlib
-matplotlib.use('QtAgg')
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-from matplotlib.figure import Figure
+import pyqtgraph as pg
 
 class StatCard(QFrame):
     def __init__(self, title, value, color="#F97316"):
@@ -58,13 +55,10 @@ class DashboardScreen(QWidget):
         self.chart_frame = QFrame()
         self.chart_frame.setObjectName("StatCard") # Reuse styling
         chart_layout = QVBoxLayout(self.chart_frame)
-        self.figure = Figure(figsize=(8, 3), dpi=100)
-        self.figure.patch.set_facecolor('none') # Transparent background
-        self.canvas = FigureCanvasQTAgg(self.figure)
-        self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.ax = self.figure.add_subplot(111)
-        self.ax.set_facecolor('none')
-        chart_layout.addWidget(self.canvas)
+        
+        pg.setConfigOptions(antialias=True)
+        self.plot_widget = pg.PlotWidget()
+        chart_layout.addWidget(self.plot_widget)
         layout.addWidget(self.chart_frame)
         
         # Tables Layout
@@ -75,8 +69,9 @@ class DashboardScreen(QWidget):
         ls_title = QLabel("Low Stock Alert")
         ls_title.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.low_stock_table = QTableWidget(0, 4)
-        self.low_stock_table.setHorizontalHeaderLabels(["Part Name", "Part Number", "Qty", "Min Qty"])
-        self.low_stock_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.low_stock_table.verticalHeader().setDefaultSectionSize(40)
+        self.low_stock_table.setHorizontalHeaderLabels(["Part #", "Name", "Qty", "Min Qty"])
+        self.low_stock_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.low_stock_table.setStyleSheet("QTableWidget { border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 12px; }")
         
         low_stock_group.addWidget(ls_title)
@@ -88,8 +83,9 @@ class DashboardScreen(QWidget):
         rb_title = QLabel("Recent Bills")
         rb_title.setStyleSheet("font-size: 16px; font-weight: bold;")
         self.recent_bills_table = QTableWidget(0, 4)
-        self.recent_bills_table.setHorizontalHeaderLabels(["Date", "Type", "Bill No.", "Amount"])
-        self.recent_bills_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.recent_bills_table.verticalHeader().setDefaultSectionSize(40)
+        self.recent_bills_table.setHorizontalHeaderLabels(["Date", "Type", "Bill #", "Amount"])
+        self.recent_bills_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         
         recent_group.addWidget(rb_title)
         recent_group.addWidget(self.recent_bills_table)
@@ -107,39 +103,37 @@ class DashboardScreen(QWidget):
         
         # Update Chart
         sales_data = get_sales_over_time(30)
-        self.ax.clear()
+        self.plot_widget.clear()
         
-        # Theme colors for chart
         is_dark = self.palette().window().color().lightness() < 128
-        text_color = '#E2E8F0' if is_dark else '#0F172A'
-        grid_color = '#334155' if is_dark else '#E2E8F0'
-        line_color = '#F97316'
+        bg_color = (23, 32, 51) if is_dark else (255, 255, 255)
+        text_color = (148, 163, 184) if is_dark else (100, 116, 139)
+        line_color = (249, 115, 22)
+        grid_color = (255, 255, 255, 25) if is_dark else (0, 0, 0, 25)
+        fill_color = (249, 115, 22, 40)
+        
+        self.plot_widget.setBackground(bg_color)
+        self.plot_widget.setTitle("Sales Over Last 30 Days", color=text_color, size="12pt")
+        self.plot_widget.getAxis("left").setPen(text_color)
+        self.plot_widget.getAxis("left").setTextPen(text_color)
+        self.plot_widget.getAxis("bottom").setPen(text_color)
+        self.plot_widget.getAxis("bottom").setTextPen(text_color)
+        self.plot_widget.showGrid(x=True, y=True, alpha=0.3)
         
         if sales_data:
-            dates = [row['bdate'][-5:] for row in sales_data] # Just show MM-DD
-            totals = [row['total'] for row in sales_data]
+            dates = [row['bdate'][-5:] for row in sales_data]
+            x_dict = dict(enumerate(dates))
+            x_axis = self.plot_widget.getAxis('bottom')
+            x_axis.setTicks([list(x_dict.items())])
             
-            self.ax.plot(dates, totals, marker='o', color=line_color, linewidth=2, markersize=6)
-            self.ax.fill_between(dates, totals, color=line_color, alpha=0.1)
+            x = list(range(len(dates)))
+            y = [row['total'] for row in sales_data]
             
-            self.ax.set_title("Sales Over Last 30 Days", color=text_color, pad=10)
-            self.ax.tick_params(axis='x', colors=text_color, rotation=45)
-            self.ax.tick_params(axis='y', colors=text_color)
+            pen = pg.mkPen(color=line_color, width=3)
+            curve = self.plot_widget.plot(x, y, pen=pen, symbol='o', symbolSize=8, symbolBrush=line_color)
             
-            # Formatting
-            self.ax.spines['bottom'].set_color(grid_color)
-            self.ax.spines['top'].set_visible(False) 
-            self.ax.spines['right'].set_visible(False)
-            self.ax.spines['left'].set_color(grid_color)
-            self.ax.grid(True, linestyle='--', alpha=0.5, color=grid_color)
-            
-            self.figure.tight_layout()
-        else:
-            self.ax.text(0.5, 0.5, "No sales data in the last 30 days", 
-                        ha='center', va='center', color=text_color)
-            self.ax.axis('off')
-            
-        self.canvas.draw()
+            fill = pg.FillBetweenItem(curve1=curve, brush=pg.mkBrush(color=fill_color), curve2=pg.PlotCurveItem(x, [0]*len(x)))
+            self.plot_widget.addItem(fill)
         
         # Low Stock
         low_stock = get_low_stock_parts()

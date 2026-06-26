@@ -74,6 +74,7 @@ class SuppliersScreen(QWidget):
         
         # Table
         self.table = QTableWidget(0, 4)
+        self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.setHorizontalHeaderLabels(["ID", "Name", "Phone", "Address"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)

@@ -51,7 +51,7 @@ class ReportsScreen(QWidget):
         
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        export_btn = QPushButton("Export CSV Reorder Sheet")
+        export_btn = QPushButton("Export CSV")
         export_btn.setProperty("class", "Primary")
         export_btn.clicked.connect(self.export_low_stock)
         btn_layout.addWidget(export_btn)
@@ -59,6 +59,7 @@ class ReportsScreen(QWidget):
         layout.addLayout(btn_layout)
         
         self.low_stock_table = QTableWidget(0, 7)
+        self.low_stock_table.verticalHeader().setDefaultSectionSize(40)
         self.low_stock_table.setHorizontalHeaderLabels(["Part Number", "Part Name", "Category", "Location", "Current Qty", "Min Qty", "Pur. Price"])
         self.low_stock_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.low_stock_table)
@@ -76,6 +77,7 @@ class ReportsScreen(QWidget):
         layout.addLayout(btn_layout)
         
         self.stock_table = QTableWidget(0, 7)
+        self.stock_table.verticalHeader().setDefaultSectionSize(40)
         self.stock_table.setHorizontalHeaderLabels(["Part Number", "Part Name", "Category", "Location", "Qty", "Pur. Price", "Total Value"])
         self.stock_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.stock_table)
@@ -110,6 +112,7 @@ class ReportsScreen(QWidget):
         layout.addLayout(filter_layout)
         
         self.sales_table = QTableWidget(0, 5)
+        self.sales_table.verticalHeader().setDefaultSectionSize(40)
         self.sales_table.setHorizontalHeaderLabels(["Date", "Bill No.", "Part Name", "Qty", "Amount"])
         self.sales_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.sales_table)
@@ -144,6 +147,7 @@ class ReportsScreen(QWidget):
         layout.addLayout(filter_layout)
         
         self.pur_table = QTableWidget(0, 6)
+        self.pur_table.verticalHeader().setDefaultSectionSize(40)
         self.pur_table.setHorizontalHeaderLabels(["Date", "Bill No.", "Supplier", "Part Name", "Qty", "Amount"])
         self.pur_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.pur_table)

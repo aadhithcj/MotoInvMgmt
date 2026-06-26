@@ -58,6 +58,7 @@ class CustomerReviewDialog(QDialog):
         
         # --- Items Table ---
         self.table = QTableWidget(0, 6)
+        self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.setHorizontalHeaderLabels(["Part Number", "Part Name", "Matched Part", "Action", "Quantity", "Unit Price"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -350,6 +351,7 @@ class CustomerBillsScreen(QWidget):
         
         # Table
         self.table = QTableWidget(0, 6)
+        self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.setHorizontalHeaderLabels(["Date", "Bill No.", "Customer", "Phone", "Amount", "Status"])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -508,6 +510,7 @@ class CreateBillDialog(QDialog):
         
         # --- Table Section ---
         self.table = QTableWidget(0, 6)
+        self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.setHorizontalHeaderLabels(["Part Name", "Quantity", "Unit Price", "Amount", "Available Stock", "Action"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self.table.setColumnWidth(1, 80)

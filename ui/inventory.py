@@ -6,6 +6,45 @@ from .toast import ToastNotification
 from database.models import get_all_parts, search_parts, add_part, update_part, delete_part
 from utils.helpers import format_currency
 
+class BatchEditDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Batch Edit Parts")
+        self.setMinimumWidth(300)
+        self.setup_ui()
+        
+    def setup_ui(self):
+        layout = QFormLayout(self)
+        
+        self.category_input = QLineEdit()
+        self.category_input.setPlaceholderText("Leave empty to keep unchanged")
+        self.location_input = QLineEdit()
+        self.location_input.setPlaceholderText("Leave empty to keep unchanged")
+        
+        layout.addRow("Category:", self.category_input)
+        layout.addRow("Location:", self.location_input)
+        
+        btn_layout = QHBoxLayout()
+        save_btn = QPushButton("Apply Batch Edit")
+        save_btn.setProperty("class", "Primary")
+        save_btn.setDefault(True)
+        save_btn.setAutoDefault(True)
+        save_btn.clicked.connect(self.accept)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        
+        btn_layout.addStretch()
+        btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(save_btn)
+        
+        layout.addRow(btn_layout)
+
+    def get_data(self):
+        return {
+            'category': self.category_input.text().strip(),
+            'location': self.location_input.text().strip()
+        }
+
 class PartDialog(QDialog):
     def __init__(self, parent=None, part_data=None):
         super().__init__(parent)
@@ -25,14 +64,17 @@ class PartDialog(QDialog):
         self.min_qty_input = QSpinBox()
         self.min_qty_input.setRange(0, 10000)
         self.min_qty_input.setValue(5)
+        self.min_qty_input.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         
         self.purchase_price_input = QDoubleSpinBox()
         self.purchase_price_input.setRange(0, 1000000)
         self.purchase_price_input.setDecimals(2)
+        self.purchase_price_input.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         
         self.selling_price_input = QDoubleSpinBox()
         self.selling_price_input.setRange(0, 1000000)
         self.selling_price_input.setDecimals(2)
+        self.selling_price_input.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         
         if self.part_data:
             self.name_input.setText(self.part_data.get('part_name', ''))
@@ -117,6 +159,7 @@ class InventoryScreen(QWidget):
         
         # Table
         self.table = QTableWidget(0, 8)
+        self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.setHorizontalHeaderLabels(["ID", "Part Number", "Part Name", "Category", "Location", "Qty", "Pur. Price", "Sell. Price"])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -132,10 +175,14 @@ class InventoryScreen(QWidget):
         edit_btn = QPushButton("Edit Selected")
         edit_btn.clicked.connect(self.edit_part)
         
+        batch_edit_btn = QPushButton("Batch Edit Selected")
+        batch_edit_btn.clicked.connect(self.batch_edit_parts)
+        
         delete_btn = QPushButton("Delete Selected")
         delete_btn.setStyleSheet("background-color: #EF4444; color: white; border-radius: 8px; border: none;")
         delete_btn.clicked.connect(self.delete_part)
         
+        actions_layout.addWidget(batch_edit_btn)
         actions_layout.addWidget(edit_btn)
         actions_layout.addWidget(delete_btn)
         layout.addLayout(actions_layout)
@@ -234,6 +281,27 @@ class InventoryScreen(QWidget):
                 self.load_data()
             except Exception as e:
                 QMessageBox.critical(self, "Database Error", str(e))
+
+    def batch_edit_parts(self):
+        selected_rows = set(item.row() for item in self.table.selectedItems())
+        if not selected_rows:
+            QMessageBox.warning(self, "Warning", "Please select at least one part to edit.")
+            return
+            
+        dialog = BatchEditDialog(self)
+        if dialog.exec():
+            new_data = dialog.get_data()
+            if not new_data['category'] and not new_data['location']:
+                return 
+                
+            from database.models import get_part_by_id, update_part
+            for row in selected_rows:
+                part_id = int(self.table.item(row, 0).text())
+                part = dict(get_part_by_id(part_id))
+                if new_data['category']: part['category'] = new_data['category']
+                if new_data['location']: part['location'] = new_data['location']
+                update_part(part_id, part)
+            self.load_data()
 
     def edit_part(self, item=None):
         part_id = self.get_selected_part_id()

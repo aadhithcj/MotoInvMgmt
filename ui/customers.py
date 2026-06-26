@@ -78,6 +78,7 @@ class CustomersScreen(QWidget):
         
         # Table
         self.table = QTableWidget(0, 5)
+        self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.setHorizontalHeaderLabels(["ID", "Name", "Phone", "Email", "Address"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
