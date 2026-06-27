@@ -101,7 +101,7 @@ class AddBillDialog(QDialog):
         self.table.setHorizontalHeaderLabels(["Part Number", "Part Name", "Matched Part", "Action", "Quantity", "Unit Price", "New Part Data"])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.table.setColumnWidth(4, 80)
+        self.table.setColumnWidth(4, 110)
         self.table.setColumnWidth(5, 100)
         self.table.setColumnHidden(6, True) # Hidden column to store pending new part data
         layout.addWidget(self.table)

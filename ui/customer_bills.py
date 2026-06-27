@@ -513,7 +513,9 @@ class CreateBillDialog(QDialog):
         self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.setHorizontalHeaderLabels(["Part Name", "Quantity", "Unit Price", "Amount", "Available Stock", "Action"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table.setColumnWidth(1, 80)
+        self.table.setColumnWidth(1, 110)
+        self.table.setColumnWidth(4, 120)
+        self.table.setColumnWidth(5, 100)
         layout.addWidget(self.table)
         
         add_btn = QPushButton("Add Item")

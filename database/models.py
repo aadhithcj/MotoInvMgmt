@@ -63,13 +63,14 @@ def add_part(data):
 def update_part(part_id, data):
     query = """
         UPDATE parts 
-        SET part_name=?, part_number=?, category=?, location=?, min_quantity=?, purchase_price=?, selling_price=?
+        SET part_name=?, part_number=?, category=?, location=?, min_quantity=?, purchase_price=?, selling_price=?, quantity=?
         WHERE id=?
     """
     params = (
         data['part_name'], data['part_number'], data.get('category', ''), 
         data.get('location', ''), data.get('min_quantity', 5), 
         data.get('purchase_price', 0), data.get('selling_price', 0),
+        data.get('quantity', 0),
         part_id
     )
     execute_query(query, params, commit=True)

@@ -61,6 +61,11 @@ class PartDialog(QDialog):
         self.category_input = QLineEdit()
         self.location_input = QLineEdit()
         
+        self.quantity_input = QSpinBox()
+        self.quantity_input.setRange(0, 1000000)
+        self.quantity_input.setValue(0)
+        self.quantity_input.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        
         self.min_qty_input = QSpinBox()
         self.min_qty_input.setRange(0, 10000)
         self.min_qty_input.setValue(5)
@@ -81,6 +86,7 @@ class PartDialog(QDialog):
             self.number_input.setText(self.part_data.get('part_number', ''))
             self.category_input.setText(self.part_data.get('category', ''))
             self.location_input.setText(self.part_data.get('location', ''))
+            self.quantity_input.setValue(self.part_data.get('quantity', 0))
             self.min_qty_input.setValue(self.part_data.get('min_quantity', 5))
             self.purchase_price_input.setValue(self.part_data.get('purchase_price', 0))
             self.selling_price_input.setValue(self.part_data.get('selling_price', 0))
@@ -89,6 +95,7 @@ class PartDialog(QDialog):
         layout.addRow("Part Number:", self.number_input)
         layout.addRow("Category:", self.category_input)
         layout.addRow("Location:", self.location_input)
+        layout.addRow("Available Stock:", self.quantity_input)
         layout.addRow("Min Quantity:", self.min_qty_input)
         layout.addRow("Purchase Price:", self.purchase_price_input)
         layout.addRow("Selling Price:", self.selling_price_input)
@@ -114,6 +121,7 @@ class PartDialog(QDialog):
             'part_number': self.number_input.text().strip(),
             'category': self.category_input.text().strip(),
             'location': self.location_input.text().strip(),
+            'quantity': self.quantity_input.value(),
             'min_quantity': self.min_qty_input.value(),
             'purchase_price': self.purchase_price_input.value(),
             'selling_price': self.selling_price_input.value()
