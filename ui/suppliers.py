@@ -2,17 +2,17 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QLineEdit, QDialog, QFormLayout, QMessageBox, QTextEdit)
 from database.models import get_all_suppliers, add_supplier, update_supplier, delete_supplier, get_supplier_by_name
+from .components import BaseStyledDialog
 
-class SupplierDialog(QDialog):
+class SupplierDialog(BaseStyledDialog):
     def __init__(self, parent=None, supplier_data=None):
-        super().__init__(parent)
+        super().__init__(parent, "Add Supplier" if not supplier_data else "Edit Supplier")
         self.supplier_data = supplier_data
-        self.setWindowTitle("Add Supplier" if not supplier_data else "Edit Supplier")
         self.setMinimumWidth(400)
         self.setup_ui()
         
     def setup_ui(self):
-        layout = QFormLayout(self)
+        layout = QFormLayout()
         
         self.name_input = QLineEdit()
         self.phone_input = QLineEdit()
@@ -40,6 +40,7 @@ class SupplierDialog(QDialog):
         btn_layout.addWidget(save_btn)
         
         layout.addRow(btn_layout)
+        self.content_layout.addLayout(layout)
 
     def get_data(self):
         return {

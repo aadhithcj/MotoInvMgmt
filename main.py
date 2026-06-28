@@ -15,6 +15,9 @@ QMainWindow, QWidget {
     font-family: 'Segoe UI Variable', 'Segoe UI', Roboto, sans-serif;
     font-size: 13px;
 }
+QLabel {
+    background-color: transparent;
+}
 QFrame#Sidebar {
     background-color: #172033;
     border-right: 1px solid rgba(255, 255, 255, 0.05);
@@ -158,6 +161,18 @@ QHeaderView::down-arrow {
     width: 12px;
     height: 12px;
 }
+QFrame#DialogContainer {
+    background-color: #1E293B;
+    border-radius: 12px;
+    border: 1px solid #334155;
+}
+QLabel#DialogTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #F8FAFC;
+    background: transparent;
+    border: none;
+}
 QScrollBar:vertical {
     border: none;
     background: transparent;
@@ -236,6 +251,9 @@ QMainWindow, QWidget {
     color: #0F172A;
     font-family: 'Segoe UI Variable', 'Segoe UI', Roboto, sans-serif;
     font-size: 13px;
+}
+QLabel {
+    background-color: transparent;
 }
 QFrame#Sidebar {
     background-color: #FFFFFF;
@@ -378,6 +396,18 @@ QHeaderView::down-arrow {
     subcontrol-position: right center;
     width: 12px;
     height: 12px;
+}
+QFrame#DialogContainer {
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+}
+QLabel#DialogTitle {
+    font-size: 18px;
+    font-weight: bold;
+    color: #0F172A;
+    background: transparent;
+    border: none;
 }
 QScrollBar:vertical {
     border: none;

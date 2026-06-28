@@ -12,17 +12,16 @@ from utils.pdf_extractor_supplier import extract_supplier_bill
 from utils.helpers import format_currency
 from utils.worker import ExtractionWorker
 from .inventory import PartDialog
-from .components import LoadingOverlay
+from .components import LoadingOverlay, BaseStyledDialog
 
-class BatchSetupDialog(QDialog):
+class BatchSetupDialog(BaseStyledDialog):
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Batch Setup Parts")
+        super().__init__(parent, "Batch Setup Parts")
         self.setMinimumWidth(300)
         self.setup_ui()
         
     def setup_ui(self):
-        layout = QFormLayout(self)
+        layout = QFormLayout()
         
         self.category_input = QLineEdit()
         self.location_input = QLineEdit()
@@ -48,6 +47,7 @@ class BatchSetupDialog(QDialog):
         btn_layout.addWidget(cancel_btn)
         btn_layout.addWidget(save_btn)
         layout.addRow(btn_layout)
+        self.content_layout.addLayout(layout)
 
     def get_data(self):
         return {
@@ -56,10 +56,9 @@ class BatchSetupDialog(QDialog):
             'min_quantity': self.min_qty_input.value()
         }
 
-class AddBillDialog(QDialog):
+class AddBillDialog(BaseStyledDialog):
     def __init__(self, parent, extracted_data):
-        super().__init__(parent)
-        self.setWindowTitle("Review Supplier Bill")
+        super().__init__(parent, "Review Supplier Bill")
         self.setMinimumSize(1000, 600)
         self.extracted_data = extracted_data
         self.all_parts = get_all_parts()
@@ -70,7 +69,8 @@ class AddBillDialog(QDialog):
         self.validate_rows()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
+        self.content_layout.addLayout(layout)
         
         # --- Header Section ---
         header_group = QFormLayout()

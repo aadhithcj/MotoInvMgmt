@@ -2,17 +2,17 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QLineEdit, QDialog, QFormLayout, QMessageBox, QTextEdit)
 from database.models import get_all_customers, add_customer, update_customer, delete_customer
+from .components import BaseStyledDialog
 
-class CustomerDialog(QDialog):
+class CustomerDialog(BaseStyledDialog):
     def __init__(self, parent=None, customer_data=None):
-        super().__init__(parent)
+        super().__init__(parent, "Add Customer" if not customer_data else "Edit Customer")
         self.customer_data = customer_data
-        self.setWindowTitle("Add Customer" if not customer_data else "Edit Customer")
         self.setMinimumWidth(400)
         self.setup_ui()
         
     def setup_ui(self):
-        layout = QFormLayout(self)
+        layout = QFormLayout()
         
         self.name_input = QLineEdit()
         self.phone_input = QLineEdit()
@@ -43,6 +43,7 @@ class CustomerDialog(QDialog):
         btn_layout.addWidget(save_btn)
         
         layout.addRow(btn_layout)
+        self.content_layout.addLayout(layout)
 
     def get_data(self):
         return {

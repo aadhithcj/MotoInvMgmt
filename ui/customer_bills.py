@@ -13,12 +13,11 @@ from utils.pdf_extractor_customer import extract_customer_bill
 from utils.helpers import format_currency
 from utils.pdf_generator import generate_customer_invoice_pdf
 from utils.worker import ExtractionWorker
-from .components import LoadingOverlay
+from .components import LoadingOverlay, BaseStyledDialog
 
-class CustomerReviewDialog(QDialog):
+class CustomerReviewDialog(BaseStyledDialog):
     def __init__(self, parent, extracted_data):
-        super().__init__(parent)
-        self.setWindowTitle("Review Customer Bill")
+        super().__init__(parent, "Review Customer Bill")
         self.setMinimumSize(1000, 600)
         self.extracted_data = extracted_data
         self.all_parts = get_all_parts()
@@ -28,7 +27,8 @@ class CustomerReviewDialog(QDialog):
         self.validate_rows()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
+        self.content_layout.addLayout(layout)
         
         # --- Header Section ---
         header_group = QFormLayout()
@@ -469,10 +469,9 @@ class CustomerBillsScreen(QWidget):
         if dialog.exec():
             self.load_data()
 
-class CreateBillDialog(QDialog):
+class CreateBillDialog(BaseStyledDialog):
     def __init__(self, parent):
-        super().__init__(parent)
-        self.setWindowTitle("Create Customer Bill")
+        super().__init__(parent, "Create Customer Bill")
         self.setMinimumSize(1000, 600)
         self.all_parts = get_all_parts()
         self.all_customers = get_all_customers()
@@ -480,7 +479,8 @@ class CreateBillDialog(QDialog):
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
+        layout = QVBoxLayout()
+        self.content_layout.addLayout(layout)
         
         # --- Header Section ---
         header_group = QFormLayout()

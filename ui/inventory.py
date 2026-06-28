@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QDialog, QFormLayout, QSpinBox, QDoubleSpinBox, QMessageBox, QFileDialog)
 from PyQt6.QtCore import Qt
 from .toast import ToastNotification
+from .components import BaseStyledDialog
 from database.models import get_all_parts, search_parts, add_part, update_part, delete_part
 from utils.helpers import format_currency
 
@@ -16,15 +17,14 @@ class NumericTableWidgetItem(QTableWidgetItem):
             return self.sort_value < other.sort_value
         return super().__lt__(other)
 
-class BatchEditDialog(QDialog):
+class BatchEditDialog(BaseStyledDialog):
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Batch Edit Parts")
+        super().__init__(parent, "Batch Edit Parts")
         self.setMinimumWidth(300)
         self.setup_ui()
         
     def setup_ui(self):
-        layout = QFormLayout(self)
+        layout = QFormLayout()
         
         self.category_input = QLineEdit()
         self.category_input.setPlaceholderText("Leave empty to keep unchanged")
@@ -48,6 +48,7 @@ class BatchEditDialog(QDialog):
         btn_layout.addWidget(save_btn)
         
         layout.addRow(btn_layout)
+        self.content_layout.addLayout(layout)
 
     def get_data(self):
         return {
@@ -55,16 +56,15 @@ class BatchEditDialog(QDialog):
             'location': self.location_input.text().strip()
         }
 
-class PartDialog(QDialog):
+class PartDialog(BaseStyledDialog):
     def __init__(self, parent=None, part_data=None):
-        super().__init__(parent)
+        super().__init__(parent, "Add Part" if not part_data else "Edit Part")
         self.part_data = part_data
-        self.setWindowTitle("Add Part" if not part_data else "Edit Part")
         self.setMinimumWidth(400)
         self.setup_ui()
         
     def setup_ui(self):
-        layout = QFormLayout(self)
+        layout = QFormLayout()
         
         self.name_input = QLineEdit()
         self.number_input = QLineEdit()
@@ -124,6 +124,7 @@ class PartDialog(QDialog):
         btn_layout.addWidget(save_btn)
         
         layout.addRow(btn_layout)
+        self.content_layout.addLayout(layout)
 
     def get_data(self):
         return {

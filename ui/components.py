@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QFrame
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QFrame
 from PyQt6.QtCore import Qt
 
 class LoadingOverlay(QDialog):
@@ -52,3 +52,52 @@ class LoadingOverlay(QDialog):
         frame_layout.addStretch()
         
         layout.addWidget(self.frame)
+
+class BaseStyledDialog(QDialog):
+    def __init__(self, parent=None, title_text="Dialog"):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.frame = QFrame(self)
+        self.frame.setObjectName("DialogContainer")
+        
+        self.frame_layout = QVBoxLayout(self.frame)
+        self.frame_layout.setContentsMargins(24, 24, 24, 24)
+        self.frame_layout.setSpacing(20)
+        
+        # Custom Title Bar
+        self.title_layout = QHBoxLayout()
+        self.title_label = QLabel(title_text)
+        self.title_label.setObjectName("DialogTitle")
+        self.title_layout.addWidget(self.title_label)
+        self.title_layout.addStretch()
+        
+        self.frame_layout.addLayout(self.title_layout)
+        
+        # Content Layout
+        self.content_layout = QVBoxLayout()
+        self.frame_layout.addLayout(self.content_layout)
+        
+        self.main_layout.addWidget(self.frame)
+        
+        self._drag_position = None
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Handle drag positioning across multiple PyQt versions
+            pos = event.globalPosition().toPoint() if hasattr(event, 'globalPosition') else event.globalPos()
+            self._drag_position = pos - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.MouseButton.LeftButton and self._drag_position is not None:
+            pos = event.globalPosition().toPoint() if hasattr(event, 'globalPosition') else event.globalPos()
+            self.move(pos - self._drag_position)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_position = None
