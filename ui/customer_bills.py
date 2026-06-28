@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QMessageBox, QFileDialog, QDialog, QFormLayout, QLineEdit, 
-                             QDateEdit, QComboBox, QDoubleSpinBox, QSpinBox, QCompleter, QFrame, QMenu)
+                             QDateEdit, QComboBox, QDoubleSpinBox, QSpinBox, QCompleter, QFrame, QMenu, QProgressDialog)
 from .toast import ToastNotification
 from PyQt6.QtCore import Qt, QDate
 from PyQt6.QtGui import QColor, QAction
@@ -12,6 +12,8 @@ from database.models import (get_all_customer_bills, get_all_parts, get_all_cust
 from utils.pdf_extractor_customer import extract_customer_bill
 from utils.helpers import format_currency
 from utils.pdf_generator import generate_customer_invoice_pdf
+from utils.worker import ExtractionWorker
+from .components import LoadingOverlay
 
 class CustomerReviewDialog(QDialog):
     def __init__(self, parent, extracted_data):
@@ -444,13 +446,23 @@ class CustomerBillsScreen(QWidget):
         if not path:
             return
             
-        try:
-            extracted = extract_customer_bill(path)
-            dialog = CustomerReviewDialog(self, extracted)
-            if dialog.exec():
-                self.load_data()
-        except Exception as e:
-            QMessageBox.critical(self, "Extraction Error", f"Failed to process PDF:\n{str(e)}")
+        self.progress = LoadingOverlay(self)
+        self.progress.show()
+        
+        self.worker = ExtractionWorker(extract_customer_bill, path)
+        self.worker.finished.connect(self.on_extraction_finished)
+        self.worker.error.connect(self.on_extraction_error)
+        self.worker.start()
+
+    def on_extraction_finished(self, extracted):
+        self.progress.accept()
+        dialog = CustomerReviewDialog(self, extracted)
+        if dialog.exec():
+            self.load_data()
+
+    def on_extraction_error(self, error_msg):
+        self.progress.accept()
+        QMessageBox.critical(self, "Extraction Error", f"Failed to process file:\n{error_msg}")
 
     def create_bill(self):
         dialog = CreateBillDialog(self)

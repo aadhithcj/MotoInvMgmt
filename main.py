@@ -138,10 +138,25 @@ QTableWidget::item:selected {
 QHeaderView::section {
     background-color: #172033;
     color: #94A3B8;
-    padding: 10px 8px;
+    padding: 10px 24px 10px 8px;
     border: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     font-weight: bold;
+}
+QHeaderView::section:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+QHeaderView::up-arrow {
+    image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMicgaGVpZ2h0PScxMicgdmlld0JveD0nMCAwIDI0IDI0JyBmaWxsPSdub25lJyBzdHJva2U9JyNGOTczMTYnIHN0cm9rZS13aWR0aD0nMycgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJyBzdHJva2UtbGluZWpvaW49J3JvdW5kJz48cGF0aCBkPSdNMTggMTVsLTYtNi02IDYnLz48L3N2Zz4=");
+    subcontrol-position: right center;
+    width: 12px;
+    height: 12px;
+}
+QHeaderView::down-arrow {
+    image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMicgaGVpZ2h0PScxMicgdmlld0JveD0nMCAwIDI0IDI0JyBmaWxsPSdub25lJyBzdHJva2U9JyNGOTczMTYnIHN0cm9rZS13aWR0aD0nMycgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJyBzdHJva2UtbGluZWpvaW49J3JvdW5kJz48cGF0aCBkPSdNNiA5bDYgNiA2LTYnLz48L3N2Zz4=");
+    subcontrol-position: right center;
+    width: 12px;
+    height: 12px;
 }
 QScrollBar:vertical {
     border: none;
@@ -344,10 +359,25 @@ QTableWidget::item:selected {
 QHeaderView::section {
     background-color: #F8FAFC;
     color: #64748B;
-    padding: 10px 8px;
+    padding: 10px 24px 10px 8px;
     border: none;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     font-weight: bold;
+}
+QHeaderView::section:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+QHeaderView::up-arrow {
+    image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMicgaGVpZ2h0PScxMicgdmlld0JveD0nMCAwIDI0IDI0JyBmaWxsPSdub25lJyBzdHJva2U9JyNGOTczMTYnIHN0cm9rZS13aWR0aD0nMycgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJyBzdHJva2UtbGluZWpvaW49J3JvdW5kJz48cGF0aCBkPSdNMTggMTVsLTYtNi02IDYnLz48L3N2Zz4=");
+    subcontrol-position: right center;
+    width: 12px;
+    height: 12px;
+}
+QHeaderView::down-arrow {
+    image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScxMicgaGVpZ2h0PScxMicgdmlld0JveD0nMCAwIDI0IDI0JyBmaWxsPSdub25lJyBzdHJva2U9JyNGOTczMTYnIHN0cm9rZS13aWR0aD0nMycgc3Ryb2tlLWxpbmVjYXA9J3JvdW5kJyBzdHJva2UtbGluZWpvaW49J3JvdW5kJz48cGF0aCBkPSdNNiA5bDYgNiA2LTYnLz48L3N2Zz4=");
+    subcontrol-position: right center;
+    width: 12px;
+    height: 12px;
 }
 QScrollBar:vertical {
     border: none;

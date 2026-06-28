@@ -6,6 +6,16 @@ from .toast import ToastNotification
 from database.models import get_all_parts, search_parts, add_part, update_part, delete_part
 from utils.helpers import format_currency
 
+class NumericTableWidgetItem(QTableWidgetItem):
+    def __init__(self, text, sort_value):
+        super().__init__(text)
+        self.sort_value = sort_value
+
+    def __lt__(self, other):
+        if hasattr(other, 'sort_value'):
+            return self.sort_value < other.sort_value
+        return super().__lt__(other)
+
 class BatchEditDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -172,6 +182,10 @@ class InventoryScreen(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setSortingEnabled(True)
+        self.table.horizontalHeader().setSortIndicatorShown(True)
+        self.table.horizontalHeader().setCursor(Qt.CursorShape.PointingHandCursor)
+        self.table.setColumnWidth(1, 140)
         self.table.itemDoubleClicked.connect(self.edit_part)
         
         layout.addWidget(self.table)
@@ -202,24 +216,27 @@ class InventoryScreen(QWidget):
         else:
             parts = get_all_parts()
             
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(0)
         for row, part in enumerate(parts):
             self.table.insertRow(row)
             
-            self.table.setItem(row, 0, QTableWidgetItem(str(part['id'])))
+            self.table.setItem(row, 0, NumericTableWidgetItem(str(part['id']), part['id']))
             self.table.setItem(row, 1, QTableWidgetItem(part['part_number']))
             self.table.setItem(row, 2, QTableWidgetItem(part['part_name']))
             self.table.setItem(row, 3, QTableWidgetItem(part['category'] or ""))
             self.table.setItem(row, 4, QTableWidgetItem(part['location'] or ""))
             
-            qty_item = QTableWidgetItem(str(part['quantity']))
+            qty_item = NumericTableWidgetItem(str(part['quantity']), part['quantity'])
             if part['quantity'] <= part['min_quantity']:
                 qty_item.setBackground(QColor("#450A0A")) # Dark red bg for dark theme
                 qty_item.setForeground(QColor("#FCA5A5")) # Light red text
             self.table.setItem(row, 5, qty_item)
             
-            self.table.setItem(row, 6, QTableWidgetItem(format_currency(part['purchase_price'])))
-            self.table.setItem(row, 7, QTableWidgetItem(format_currency(part['selling_price'])))
+            self.table.setItem(row, 6, NumericTableWidgetItem(format_currency(part['purchase_price']), part['purchase_price']))
+            self.table.setItem(row, 7, NumericTableWidgetItem(format_currency(part['selling_price']), part['selling_price']))
+            
+        self.table.setSortingEnabled(True)
 
     def get_selected_part_id(self):
         selected_rows = self.table.selectedItems()
